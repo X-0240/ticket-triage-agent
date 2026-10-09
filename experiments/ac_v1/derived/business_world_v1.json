@@ -1,0 +1,1596 @@
+{
+  "kind": "ac_v1_business_world",
+  "version": "v1",
+  "data_origin": "constructed_for_ac_v1",
+  "disclaimer": "本文件是**为 A/C 对照构造的数据**，不是真实业务记录：它按每条案例的业务情境（business_state / scenario_type / 冻结正文）确定性地生成退款、政策知识库、商品关联与历史处置数据，加载进隔离的实验库供真实 tools.py 查询。",
+  "forbidden_inputs": [
+    "expected_queue",
+    "expected_priority",
+    "expected_handoff",
+    "agent_needed"
+  ],
+  "time_convention": "所有 `*_offset_hours` 都是相对加载时刻的偏移，由加载器换算成绝对时间；知识库 updated_at 为固定日期。",
+  "derived_from": {
+    "spec_file": "experiments/discovery/spec_50.json",
+    "spec_sha256_lf": "e2c5d976cbcf6c69a633cd9982039d568bd3869b87e9fa11124a7ea14a7d5d17",
+    "inputs_file": "experiments/discovery/inputs_50.json",
+    "inputs_sha256_lf": "da1287bb144eb814adc5b5773c769ae37657a27f940d67a30edb52872c0a34d3",
+    "rules_file": "fixtures/discovery/rules_v1.json"
+  },
+  "tables": {
+    "ticket": [
+      {
+        "ticket_id": "T-2001",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "已经付款好几天了，一直没发货",
+        "body": "已经付款好几天了，一直没发货，订单号 O-3001。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已催单并告知预计发货时间",
+        "created_offset_hours": -49.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2002",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "已经付款好几天了，一直没发货",
+        "body": "已经付款好几天了，一直没发货，这已经是第二次了，实在受不了，订单号 O-3002。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已催单并告知预计发货时间",
+        "created_offset_hours": -48.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2003",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "已经付款好几天了，一直没发货",
+        "body": "5 天前下的单，中间一直没消息，现在已经付款好几天了，一直没发货，订单号 O-3003。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已催单并告知预计发货时间",
+        "created_offset_hours": -47.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2004",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "已经付款好几天了，一直没发货",
+        "body": "订单 O-3004 到底要拖多久？已经付款好几天了，一直没发货，你们到底管不管？",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已催单并告知预计发货时间",
+        "created_offset_hours": -46.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2005",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "已经付款好几天了，一直没发货",
+        "body": "已经付款好几天了，一直没发货，具体订单号我一时找不到了。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已催单并告知预计发货时间",
+        "created_offset_hours": -45.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2006",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "物流卡在中转站好几天没动静",
+        "body": "物流卡在中转站好几天没动静，订单号 O-3006。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按物流异常流程登记，承运商排查中",
+        "created_offset_hours": -44.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2007",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "物流卡在中转站好几天没动静",
+        "body": "物流卡在中转站好几天没动静，这已经是第二次了，实在受不了，订单号 O-3007。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按物流异常流程登记，承运商排查中",
+        "created_offset_hours": -43.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2008",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "物流卡在中转站好几天没动静",
+        "body": "5 天前下的单，中间一直没消息，现在物流卡在中转站好几天没动静，订单号 O-3008。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按物流异常流程登记，承运商排查中",
+        "created_offset_hours": -42.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2009",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "物流卡在中转站好几天没动静",
+        "body": "订单 O-3009 到底要拖多久？物流卡在中转站好几天没动静，你们到底管不管？",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按物流异常流程登记，承运商排查中",
+        "created_offset_hours": -41.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2010",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "物流卡在中转站好几天没动静",
+        "body": "物流卡在中转站好几天没动静，具体订单号我一时找不到了。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按物流异常流程登记，承运商排查中",
+        "created_offset_hours": -40.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2011",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "想确认一下包裹走到哪了",
+        "body": "想确认一下包裹走到哪了，订单号 O-3011。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按在途查询答复最新轨迹",
+        "created_offset_hours": -39.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2012",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "想确认一下包裹走到哪了",
+        "body": "想确认一下包裹走到哪了，这已经是第二次了，实在受不了，订单号 O-3012。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按在途查询答复最新轨迹",
+        "created_offset_hours": -38.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2013",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "想确认一下包裹走到哪了",
+        "body": "5 天前下的单，中间一直没消息，现在想确认一下包裹走到哪了，订单号 O-3013。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按在途查询答复最新轨迹",
+        "created_offset_hours": -37.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2014",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "想确认一下包裹走到哪了",
+        "body": "订单 O-3014 到底要拖多久？想确认一下包裹走到哪了，你们到底管不管？",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按在途查询答复最新轨迹",
+        "created_offset_hours": -36.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2015",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "想确认一下包裹走到哪了",
+        "body": "想确认一下包裹走到哪了，具体订单号我一时找不到了。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按在途查询答复最新轨迹",
+        "created_offset_hours": -35.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2016",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "不想要了，希望退款",
+        "body": "不想要了，希望退款，订单号 O-3016。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已登记退款申请，等待审核",
+        "created_offset_hours": -34.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2017",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "不想要了，希望退款",
+        "body": "不想要了，希望退款，这已经是第二次了，实在受不了，订单号 O-3017。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已登记退款申请，等待审核",
+        "created_offset_hours": -33.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2018",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "不想要了，希望退款",
+        "body": "5 天前下的单，中间一直没消息，现在不想要了，希望退款，订单号 O-3018。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已登记退款申请，等待审核",
+        "created_offset_hours": -32.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2019",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "不想要了，希望退款",
+        "body": "订单 O-3019 到底要拖多久？不想要了，希望退款，你们到底管不管？",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已登记退款申请，等待审核",
+        "created_offset_hours": -31.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2020",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "不想要了，希望退款",
+        "body": "不想要了，希望退款，具体订单号我一时找不到了。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已登记退款申请，等待审核",
+        "created_offset_hours": -30.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2021",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "我这个情况该怎么办",
+        "body": "我这个情况该怎么办，订单号 O-3021。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已请客户补充订单号",
+        "created_offset_hours": -29.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2022",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "我这个情况该怎么办",
+        "body": "我这个情况该怎么办，这已经是第二次了，实在受不了，订单号 O-3022。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已请客户补充订单号",
+        "created_offset_hours": -28.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2023",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "我这个情况该怎么办",
+        "body": "5 天前下的单，中间一直没消息，现在我这个情况该怎么办，订单号 O-3023。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已请客户补充订单号",
+        "created_offset_hours": -27.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2024",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "我这个情况该怎么办",
+        "body": "订单 O-3024 到底要拖多久？我这个情况该怎么办，你们到底管不管？",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已请客户补充订单号",
+        "created_offset_hours": -26.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2025",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "我这个情况该怎么办",
+        "body": "我这个情况该怎么办，具体订单号我一时找不到了。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已请客户补充订单号",
+        "created_offset_hours": -25.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2026",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "货没到还要退款，上次也没人处理",
+        "body": "货没到还要退款，上次也没人处理，订单号 O-3026。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已拆成物流与退款两个事项分别跟进",
+        "created_offset_hours": -24.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2027",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "货没到还要退款，上次也没人处理",
+        "body": "货没到还要退款，上次也没人处理，这已经是第二次了，实在受不了，订单号 O-3027。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已拆成物流与退款两个事项分别跟进",
+        "created_offset_hours": -23.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2028",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "货没到还要退款，上次也没人处理",
+        "body": "5 天前下的单，中间一直没消息，现在货没到还要退款，上次也没人处理，订单号 O-3028。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已拆成物流与退款两个事项分别跟进",
+        "created_offset_hours": -22.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2029",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "货没到还要退款，上次也没人处理",
+        "body": "订单 O-3029 到底要拖多久？货没到还要退款，上次也没人处理，你们到底管不管？",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已拆成物流与退款两个事项分别跟进",
+        "created_offset_hours": -21.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2030",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "货没到还要退款，上次也没人处理",
+        "body": "货没到还要退款，上次也没人处理，具体订单号我一时找不到了。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已拆成物流与退款两个事项分别跟进",
+        "created_offset_hours": -20.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2031",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "帮我查一下那个订单",
+        "body": "帮我查一下那个订单，订单号 O-9999。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已请客户核对订单号后重开",
+        "created_offset_hours": -19.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2032",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "帮我查一下那个订单",
+        "body": "帮我查一下那个订单，这已经是第二次了，实在受不了，订单号 O-9999。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已请客户核对订单号后重开",
+        "created_offset_hours": -18.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2033",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "帮我查一下那个订单",
+        "body": "5 天前下的单，中间一直没消息，现在帮我查一下那个订单，订单号 O-9999。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已请客户核对订单号后重开",
+        "created_offset_hours": -17.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2034",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "帮我查一下那个订单",
+        "body": "订单 O-9999 到底要拖多久？帮我查一下那个订单，你们到底管不管？",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已请客户核对订单号后重开",
+        "created_offset_hours": -16.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2035",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "帮我查一下那个订单",
+        "body": "帮我查一下那个订单，具体订单号我一时找不到了。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已请客户核对订单号后重开",
+        "created_offset_hours": -15.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2036",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "收到货了，想问下保修政策",
+        "body": "收到货了，想问下保修政策，订单号 O-3036。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按保修条款答复客户",
+        "created_offset_hours": -14.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2037",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "收到货了，想问下保修政策",
+        "body": "收到货了，想问下保修政策，这已经是第二次了，实在受不了，订单号 O-3037。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按保修条款答复客户",
+        "created_offset_hours": -13.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2038",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "收到货了，想问下保修政策",
+        "body": "5 天前下的单，中间一直没消息，现在收到货了，想问下保修政策，订单号 O-3038。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按保修条款答复客户",
+        "created_offset_hours": -12.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2039",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "收到货了，想问下保修政策",
+        "body": "订单 O-3039 到底要拖多久？收到货了，想问下保修政策，你们到底管不管？",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按保修条款答复客户",
+        "created_offset_hours": -11.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2040",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "收到货了，想问下保修政策",
+        "body": "收到货了，想问下保修政策，具体订单号我一时找不到了。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已按保修条款答复客户",
+        "created_offset_hours": -10.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2041",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "有点着急，麻烦尽快处理",
+        "body": "有点着急，麻烦尽快处理，订单号 O-3041。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已优先响应并升级处理",
+        "created_offset_hours": -9.0,
+        "sla_due_offset_hours": 1.0
+      },
+      {
+        "ticket_id": "T-2042",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "有点着急，麻烦尽快处理",
+        "body": "有点着急，麻烦尽快处理，这已经是第二次了，实在受不了，订单号 O-3042。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已优先响应并升级处理",
+        "created_offset_hours": -8.0,
+        "sla_due_offset_hours": 1.0
+      },
+      {
+        "ticket_id": "T-2043",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "有点着急，麻烦尽快处理",
+        "body": "5 天前下的单，中间一直没消息，现在有点着急，麻烦尽快处理，订单号 O-3043。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已优先响应并升级处理",
+        "created_offset_hours": -7.0,
+        "sla_due_offset_hours": 1.0
+      },
+      {
+        "ticket_id": "T-2044",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "有点着急，麻烦尽快处理",
+        "body": "订单 O-3044 到底要拖多久？有点着急，麻烦尽快处理，你们到底管不管？",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已优先响应并升级处理",
+        "created_offset_hours": -6.0,
+        "sla_due_offset_hours": 1.0
+      },
+      {
+        "ticket_id": "T-2045",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "有点着急，麻烦尽快处理",
+        "body": "有点着急，麻烦尽快处理，具体订单号我一时找不到了。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已优先响应并升级处理",
+        "created_offset_hours": -5.0,
+        "sla_due_offset_hours": 1.0
+      },
+      {
+        "ticket_id": "T-2046",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "希望尽快退款",
+        "body": "希望尽快退款，订单号 O-3046。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已加急登记退款申请",
+        "created_offset_hours": -4.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2047",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "希望尽快退款",
+        "body": "希望尽快退款，这已经是第二次了，实在受不了，订单号 O-3047。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已加急登记退款申请",
+        "created_offset_hours": -3.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2048",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "希望尽快退款",
+        "body": "5 天前下的单，中间一直没消息，现在希望尽快退款，订单号 O-3048。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已加急登记退款申请",
+        "created_offset_hours": -2.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2049",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "希望尽快退款",
+        "body": "订单 O-3049 到底要拖多久？希望尽快退款，你们到底管不管？",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已加急登记退款申请",
+        "created_offset_hours": -1.0,
+        "sla_due_offset_hours": 6.0
+      },
+      {
+        "ticket_id": "T-2050",
+        "customer_id": "C-1001",
+        "channel": "email",
+        "subject": "希望尽快退款",
+        "body": "希望尽快退款，具体订单号我一时找不到了。",
+        "status": "OPEN",
+        "current_queue": null,
+        "resolution": "已加急登记退款申请",
+        "created_offset_hours": 0.0,
+        "sla_due_offset_hours": 6.0
+      }
+    ],
+    "orders": [
+      {
+        "order_no": "O-3001",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -241.0,
+        "paid_offset_hours": -241.0
+      },
+      {
+        "order_no": "O-3002",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -240.0,
+        "paid_offset_hours": -240.0
+      },
+      {
+        "order_no": "O-3003",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -239.0,
+        "paid_offset_hours": -239.0
+      },
+      {
+        "order_no": "O-3004",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -238.0,
+        "paid_offset_hours": -238.0
+      },
+      {
+        "order_no": "O-3005",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -237.0,
+        "paid_offset_hours": -237.0
+      },
+      {
+        "order_no": "O-3006",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -236.0,
+        "paid_offset_hours": -236.0
+      },
+      {
+        "order_no": "O-3007",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -235.0,
+        "paid_offset_hours": -235.0
+      },
+      {
+        "order_no": "O-3008",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -234.0,
+        "paid_offset_hours": -234.0
+      },
+      {
+        "order_no": "O-3009",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -233.0,
+        "paid_offset_hours": -233.0
+      },
+      {
+        "order_no": "O-3010",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -232.0,
+        "paid_offset_hours": -232.0
+      },
+      {
+        "order_no": "O-3011",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -231.0,
+        "paid_offset_hours": -231.0
+      },
+      {
+        "order_no": "O-3012",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -230.0,
+        "paid_offset_hours": -230.0
+      },
+      {
+        "order_no": "O-3013",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -229.0,
+        "paid_offset_hours": -229.0
+      },
+      {
+        "order_no": "O-3014",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -228.0,
+        "paid_offset_hours": -228.0
+      },
+      {
+        "order_no": "O-3015",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -227.0,
+        "paid_offset_hours": -227.0
+      },
+      {
+        "order_no": "O-3016",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -226.0,
+        "paid_offset_hours": -226.0
+      },
+      {
+        "order_no": "O-3017",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -225.0,
+        "paid_offset_hours": -225.0
+      },
+      {
+        "order_no": "O-3018",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -224.0,
+        "paid_offset_hours": -224.0
+      },
+      {
+        "order_no": "O-3019",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -223.0,
+        "paid_offset_hours": -223.0
+      },
+      {
+        "order_no": "O-3020",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -222.0,
+        "paid_offset_hours": -222.0
+      },
+      {
+        "order_no": "O-3026",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -216.0,
+        "paid_offset_hours": -216.0
+      },
+      {
+        "order_no": "O-3027",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -215.0,
+        "paid_offset_hours": -215.0
+      },
+      {
+        "order_no": "O-3028",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -214.0,
+        "paid_offset_hours": -214.0
+      },
+      {
+        "order_no": "O-3029",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -213.0,
+        "paid_offset_hours": -213.0
+      },
+      {
+        "order_no": "O-3030",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -212.0,
+        "paid_offset_hours": -212.0
+      },
+      {
+        "order_no": "O-3036",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -206.0,
+        "paid_offset_hours": -206.0
+      },
+      {
+        "order_no": "O-3037",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -205.0,
+        "paid_offset_hours": -205.0
+      },
+      {
+        "order_no": "O-3038",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -204.0,
+        "paid_offset_hours": -204.0
+      },
+      {
+        "order_no": "O-3039",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -203.0,
+        "paid_offset_hours": -203.0
+      },
+      {
+        "order_no": "O-3040",
+        "customer_id": "C-1001",
+        "status": "SHIPPED",
+        "amount": 199.0,
+        "created_offset_hours": -202.0,
+        "paid_offset_hours": -202.0
+      },
+      {
+        "order_no": "O-3041",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -201.0,
+        "paid_offset_hours": -201.0
+      },
+      {
+        "order_no": "O-3042",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -200.0,
+        "paid_offset_hours": -200.0
+      },
+      {
+        "order_no": "O-3043",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -199.0,
+        "paid_offset_hours": -199.0
+      },
+      {
+        "order_no": "O-3044",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -198.0,
+        "paid_offset_hours": -198.0
+      },
+      {
+        "order_no": "O-3045",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -197.0,
+        "paid_offset_hours": -197.0
+      },
+      {
+        "order_no": "O-3046",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -196.0,
+        "paid_offset_hours": -196.0
+      },
+      {
+        "order_no": "O-3047",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -195.0,
+        "paid_offset_hours": -195.0
+      },
+      {
+        "order_no": "O-3048",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -194.0,
+        "paid_offset_hours": -194.0
+      },
+      {
+        "order_no": "O-3049",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -193.0,
+        "paid_offset_hours": -193.0
+      },
+      {
+        "order_no": "O-3050",
+        "customer_id": "C-1001",
+        "status": "PAID",
+        "amount": 199.0,
+        "created_offset_hours": -192.0,
+        "paid_offset_hours": -192.0
+      }
+    ],
+    "order_line": [
+      {
+        "order_no": "O-3001",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3002",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3003",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3004",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3005",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3006",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3007",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3008",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3009",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3010",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3011",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3012",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3013",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3014",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3015",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3016",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3017",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3018",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3019",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3020",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3026",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3027",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3028",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3029",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3030",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3036",
+        "sku_code": "SKU-2002",
+        "sku_name": "智能手环（整机保修 12 个月）",
+        "qty": 1,
+        "unit_price": 299.0
+      },
+      {
+        "order_no": "O-3037",
+        "sku_code": "SKU-2002",
+        "sku_name": "智能手环（整机保修 12 个月）",
+        "qty": 1,
+        "unit_price": 299.0
+      },
+      {
+        "order_no": "O-3038",
+        "sku_code": "SKU-2002",
+        "sku_name": "智能手环（整机保修 12 个月）",
+        "qty": 1,
+        "unit_price": 299.0
+      },
+      {
+        "order_no": "O-3039",
+        "sku_code": "SKU-2002",
+        "sku_name": "智能手环（整机保修 12 个月）",
+        "qty": 1,
+        "unit_price": 299.0
+      },
+      {
+        "order_no": "O-3040",
+        "sku_code": "SKU-2002",
+        "sku_name": "智能手环（整机保修 12 个月）",
+        "qty": 1,
+        "unit_price": 299.0
+      },
+      {
+        "order_no": "O-3041",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3042",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3043",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3044",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3045",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3046",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3047",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3048",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3049",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      },
+      {
+        "order_no": "O-3050",
+        "sku_code": "SKU-1001",
+        "sku_name": "无线蓝牙耳机",
+        "qty": 1,
+        "unit_price": 199.0
+      }
+    ],
+    "shipment": [
+      {
+        "order_no": "O-3006",
+        "state": "DELAYED",
+        "carrier": "SF",
+        "tracking_no": "SF0006",
+        "exception_flag": 1,
+        "shipped_offset_hours": -188.0,
+        "last_event_offset_hours": -50.0
+      },
+      {
+        "order_no": "O-3007",
+        "state": "DELAYED",
+        "carrier": "SF",
+        "tracking_no": "SF0007",
+        "exception_flag": 1,
+        "shipped_offset_hours": -187.0,
+        "last_event_offset_hours": -49.0
+      },
+      {
+        "order_no": "O-3008",
+        "state": "DELAYED",
+        "carrier": "SF",
+        "tracking_no": "SF0008",
+        "exception_flag": 1,
+        "shipped_offset_hours": -186.0,
+        "last_event_offset_hours": -48.0
+      },
+      {
+        "order_no": "O-3009",
+        "state": "DELAYED",
+        "carrier": "SF",
+        "tracking_no": "SF0009",
+        "exception_flag": 1,
+        "shipped_offset_hours": -185.0,
+        "last_event_offset_hours": -47.0
+      },
+      {
+        "order_no": "O-3010",
+        "state": "DELAYED",
+        "carrier": "SF",
+        "tracking_no": "SF0010",
+        "exception_flag": 1,
+        "shipped_offset_hours": -184.0,
+        "last_event_offset_hours": -46.0
+      },
+      {
+        "order_no": "O-3011",
+        "state": "SHIPPED",
+        "carrier": "SF",
+        "tracking_no": "SF0011",
+        "exception_flag": 0,
+        "shipped_offset_hours": -183.0,
+        "last_event_offset_hours": -45.0
+      },
+      {
+        "order_no": "O-3012",
+        "state": "SHIPPED",
+        "carrier": "SF",
+        "tracking_no": "SF0012",
+        "exception_flag": 0,
+        "shipped_offset_hours": -182.0,
+        "last_event_offset_hours": -44.0
+      },
+      {
+        "order_no": "O-3013",
+        "state": "SHIPPED",
+        "carrier": "SF",
+        "tracking_no": "SF0013",
+        "exception_flag": 0,
+        "shipped_offset_hours": -181.0,
+        "last_event_offset_hours": -43.0
+      },
+      {
+        "order_no": "O-3014",
+        "state": "SHIPPED",
+        "carrier": "SF",
+        "tracking_no": "SF0014",
+        "exception_flag": 0,
+        "shipped_offset_hours": -180.0,
+        "last_event_offset_hours": -42.0
+      },
+      {
+        "order_no": "O-3015",
+        "state": "SHIPPED",
+        "carrier": "SF",
+        "tracking_no": "SF0015",
+        "exception_flag": 0,
+        "shipped_offset_hours": -179.0,
+        "last_event_offset_hours": -41.0
+      },
+      {
+        "order_no": "O-3026",
+        "state": "DELAYED",
+        "carrier": "SF",
+        "tracking_no": "SF0026",
+        "exception_flag": 1,
+        "shipped_offset_hours": -168.0,
+        "last_event_offset_hours": -30.0
+      },
+      {
+        "order_no": "O-3027",
+        "state": "DELAYED",
+        "carrier": "SF",
+        "tracking_no": "SF0027",
+        "exception_flag": 1,
+        "shipped_offset_hours": -167.0,
+        "last_event_offset_hours": -29.0
+      },
+      {
+        "order_no": "O-3028",
+        "state": "DELAYED",
+        "carrier": "SF",
+        "tracking_no": "SF0028",
+        "exception_flag": 1,
+        "shipped_offset_hours": -166.0,
+        "last_event_offset_hours": -28.0
+      },
+      {
+        "order_no": "O-3029",
+        "state": "DELAYED",
+        "carrier": "SF",
+        "tracking_no": "SF0029",
+        "exception_flag": 1,
+        "shipped_offset_hours": -165.0,
+        "last_event_offset_hours": -27.0
+      },
+      {
+        "order_no": "O-3030",
+        "state": "DELAYED",
+        "carrier": "SF",
+        "tracking_no": "SF0030",
+        "exception_flag": 1,
+        "shipped_offset_hours": -164.0,
+        "last_event_offset_hours": -26.0
+      },
+      {
+        "order_no": "O-3036",
+        "state": "SHIPPED",
+        "carrier": "SF",
+        "tracking_no": "SF0036",
+        "exception_flag": 0,
+        "shipped_offset_hours": -158.0,
+        "last_event_offset_hours": -20.0
+      },
+      {
+        "order_no": "O-3037",
+        "state": "SHIPPED",
+        "carrier": "SF",
+        "tracking_no": "SF0037",
+        "exception_flag": 0,
+        "shipped_offset_hours": -157.0,
+        "last_event_offset_hours": -19.0
+      },
+      {
+        "order_no": "O-3038",
+        "state": "SHIPPED",
+        "carrier": "SF",
+        "tracking_no": "SF0038",
+        "exception_flag": 0,
+        "shipped_offset_hours": -156.0,
+        "last_event_offset_hours": -18.0
+      },
+      {
+        "order_no": "O-3039",
+        "state": "SHIPPED",
+        "carrier": "SF",
+        "tracking_no": "SF0039",
+        "exception_flag": 0,
+        "shipped_offset_hours": -155.0,
+        "last_event_offset_hours": -17.0
+      },
+      {
+        "order_no": "O-3040",
+        "state": "SHIPPED",
+        "carrier": "SF",
+        "tracking_no": "SF0040",
+        "exception_flag": 0,
+        "shipped_offset_hours": -154.0,
+        "last_event_offset_hours": -16.0
+      }
+    ],
+    "refund": [
+      {
+        "refund_no": "RF-0016",
+        "order_no": "O-3016",
+        "amount": 199.0,
+        "state": "APPLIED",
+        "reason": "客户申请退款：改变主意",
+        "created_offset_hours": -37.0
+      },
+      {
+        "refund_no": "RF-0017",
+        "order_no": "O-3017",
+        "amount": 199.0,
+        "state": "APPLIED",
+        "reason": "客户申请退款：改变主意",
+        "created_offset_hours": -36.0
+      },
+      {
+        "refund_no": "RF-0018",
+        "order_no": "O-3018",
+        "amount": 199.0,
+        "state": "APPLIED",
+        "reason": "客户申请退款：改变主意",
+        "created_offset_hours": -35.0
+      },
+      {
+        "refund_no": "RF-0019",
+        "order_no": "O-3019",
+        "amount": 199.0,
+        "state": "APPLIED",
+        "reason": "客户申请退款：改变主意",
+        "created_offset_hours": -34.0
+      },
+      {
+        "refund_no": "RF-0020",
+        "order_no": "O-3020",
+        "amount": 199.0,
+        "state": "APPLIED",
+        "reason": "客户申请退款：改变主意",
+        "created_offset_hours": -33.0
+      },
+      {
+        "refund_no": "RF-0026",
+        "order_no": "O-3026",
+        "amount": 199.0,
+        "state": "REJECTED",
+        "reason": "客户申请退款：商品已发出，未达退款条件",
+        "created_offset_hours": -27.0
+      },
+      {
+        "refund_no": "RF-0027",
+        "order_no": "O-3027",
+        "amount": 199.0,
+        "state": "REJECTED",
+        "reason": "客户申请退款：商品已发出，未达退款条件",
+        "created_offset_hours": -26.0
+      },
+      {
+        "refund_no": "RF-0028",
+        "order_no": "O-3028",
+        "amount": 199.0,
+        "state": "REJECTED",
+        "reason": "客户申请退款：商品已发出，未达退款条件",
+        "created_offset_hours": -25.0
+      },
+      {
+        "refund_no": "RF-0029",
+        "order_no": "O-3029",
+        "amount": 199.0,
+        "state": "REJECTED",
+        "reason": "客户申请退款：商品已发出，未达退款条件",
+        "created_offset_hours": -24.0
+      },
+      {
+        "refund_no": "RF-0030",
+        "order_no": "O-3030",
+        "amount": 199.0,
+        "state": "REJECTED",
+        "reason": "客户申请退款：商品已发出，未达退款条件",
+        "created_offset_hours": -23.0
+      },
+      {
+        "refund_no": "RF-0046",
+        "order_no": "O-3046",
+        "amount": 199.0,
+        "state": "APPLIED",
+        "reason": "客户申请退款：改变主意",
+        "created_offset_hours": -7.0
+      },
+      {
+        "refund_no": "RF-0047",
+        "order_no": "O-3047",
+        "amount": 199.0,
+        "state": "APPLIED",
+        "reason": "客户申请退款：改变主意",
+        "created_offset_hours": -6.0
+      },
+      {
+        "refund_no": "RF-0048",
+        "order_no": "O-3048",
+        "amount": 199.0,
+        "state": "APPLIED",
+        "reason": "客户申请退款：改变主意",
+        "created_offset_hours": -5.0
+      },
+      {
+        "refund_no": "RF-0049",
+        "order_no": "O-3049",
+        "amount": 199.0,
+        "state": "APPLIED",
+        "reason": "客户申请退款：改变主意",
+        "created_offset_hours": -4.0
+      },
+      {
+        "refund_no": "RF-0050",
+        "order_no": "O-3050",
+        "amount": 199.0,
+        "state": "APPLIED",
+        "reason": "客户申请退款：改变主意",
+        "created_offset_hours": -3.0
+      }
+    ],
+    "kb_article": [
+      {
+        "kb_id": "K-1001",
+        "policy_type": "refund",
+        "title": "退款政策：申请条件与到账时效",
+        "body": "未发货订单可全额退款，审核通过后 3 个工作日退回原支付渠道；已发货订单需先拦截或签收后退回，退款在签收后 7 个工作日内处理；退款申请被拒时须说明原因并给客户留申诉入口。",
+        "version": "v1",
+        "status": "PUBLISHED",
+        "updated_at": "2026-09-01 12:00:00"
+      },
+      {
+        "kb_id": "K-1002",
+        "policy_type": "cancel",
+        "title": "取消订单规则：未发货与已发货的区别",
+        "body": "未发货订单可即时取消并原路退回；已发货订单不能直接取消，只能走拦截或拒收流程；取消与退款是两步，取消成功不等于退款到账。",
+        "version": "v1",
+        "status": "PUBLISHED",
+        "updated_at": "2026-09-01 12:00:00"
+      },
+      {
+        "kb_id": "K-1003",
+        "policy_type": "warranty",
+        "title": "商品保修政策：整机与配件",
+        "body": "整机保修 12 个月，配件保修 3 个月，自签收之日起算；保修需提供订单号与签收凭证；人为损坏、进液、私自拆修不在保修范围；保修期内非人为故障免费维修，超过 30 天未修复可申请换新。",
+        "version": "v1",
+        "status": "PUBLISHED",
+        "updated_at": "2026-09-01 12:00:00"
+      },
+      {
+        "kb_id": "K-1004",
+        "policy_type": "logistics",
+        "title": "物流异常处理与赔付标准",
+        "body": "物流延迟超过 72 小时按每天 20 元赔付，单笔上限 100 元；包裹丢失按实付金额全额赔付；物流异常需先核实承运商轨迹与异常标记，再决定赔付或补发，不能只看客户描述就承诺赔付。",
+        "version": "v1",
+        "status": "PUBLISHED",
+        "updated_at": "2026-09-01 12:00:00"
+      },
+      {
+        "kb_id": "K-1005",
+        "policy_type": "sla",
+        "title": "工单响应时效与超时升级（SLA）",
+        "body": "普通工单 6 小时内首次响应；临近超时（2 小时内到期）须优先响应并升级；超时未响应由值班主管跟进，加急工单需在 1 小时内给出结论。",
+        "version": "v1",
+        "status": "PUBLISHED",
+        "updated_at": "2026-09-01 12:00:00"
+      },
+      {
+        "kb_id": "K-1006",
+        "policy_type": "missing_order",
+        "title": "缺少订单号时的处理规范",
+        "body": "客户未提供订单号且无法定位时，先按客户账号维度检索；仍无法定位则请客户补充订单号或下单手机号，不得凭猜测指定订单，也不得据此承诺退款或赔付。",
+        "version": "v1",
+        "status": "PUBLISHED",
+        "updated_at": "2026-09-01 12:00:00"
+      }
+    ]
+  },
+  "counts": {
+    "ticket": 50,
+    "orders": 40,
+    "order_line": 40,
+    "shipment": 20,
+    "refund": 15,
+    "kb_article": 6
+  }
+}
