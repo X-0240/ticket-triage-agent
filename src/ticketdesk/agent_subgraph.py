@@ -24,6 +24,18 @@ class EntryDenied(ValueError):
         self.reason = reason
 
 
+class StageTimeout(Exception):
+    """带阶段的超时：由注入的模型/工具执行器抛出，子图**透传**给运行器分类。
+
+    `stage` 取 `"model"` 或 `"tool"`。子图不把它降级成普通人工转交结果——
+    否则运行器无法还原故障类型与阶段。
+    """
+
+    def __init__(self, stage):
+        super().__init__("timeout at stage: " + str(stage))
+        self.stage = stage
+
+
 @dataclass(frozen=True)
 class RunState:
     """一次子图执行的累计状态（供审计与停止判断）。"""
@@ -76,6 +88,9 @@ def run(route, base_fact_ids, model, executor, budget=4):
         seen.add(key)
         try:
             result = executor(tool=action.get("tool"), **(action.get("args") or {}))
+        except StageTimeout:
+            # 先于通用异常处理：带阶段信息的超时必须透传，不能被降级成 TOOL_FAILED
+            raise
         except Exception:
             return {"action": "human_review", "payload": None,
                     "allowed_fact_ids": allowed, "tool_calls": len(seen),

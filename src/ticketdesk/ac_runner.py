@@ -21,6 +21,8 @@ class HashMismatch(ValueError):
     """Manifest 校验不通过：拒绝运行。"""
 
 
+# 阶段超时由子图定义并透传到这里分类（见 agent_subgraph.StageTimeout）
+StageTimeout = agent_subgraph.StageTimeout
 @dataclass(frozen=True)
 class RunRecord:
     """一条逐次执行记录（A 或 C 的一案例一次）。"""
@@ -34,6 +36,7 @@ class RunRecord:
     tool_calls: int
     decision: dict | None
     latency_ms: int
+    tokens: int | None = None
     failed: bool = False
     failure_code: str | None = None
     notes: list = field(default_factory=list)
@@ -57,12 +60,13 @@ def run_case(arm, case, route_input, model_factory, executor_factory, budget=4):
     allowed = set(case.get("base_fact_ids") or [])
     decision, stop_code, tool_calls, route = None, None, 0, "workflow"
     failed, failure_code, notes = False, None, []
-    if arm == "A":
-        decision = _workflow_decision(case["case_id"], model_factory)
-    elif arm == "C":
-        route, reason = routing.decide_route(route_input)
-        if route == routing.ROUTE_AMBIGUOUS:
-            try:
+    tokens = None  # 无法获取用量时必须为 None，不能记成 0
+    try:
+        if arm == "A":
+            decision = _workflow_decision(case["case_id"], model_factory)
+        elif arm == "C":
+            route, reason = routing.decide_route(route_input)
+            if route == routing.ROUTE_AMBIGUOUS:
                 out = agent_subgraph.run(
                     "ambiguous", allowed,
                     model_factory(case["case_id"], sorted(allowed)),
@@ -73,20 +77,32 @@ def run_case(arm, case, route_input, model_factory, executor_factory, budget=4):
                 tool_calls = out["tool_calls"]
                 if out["action"] != "decide":
                     failed, failure_code = True, out["stop_code"]
-            except Exception as exc:  # noqa: BLE001 - 失败必须留痕，不丢样本
-                failed, failure_code = True, "RUNNER_EXCEPTION"
-                notes.append(str(exc))
+                if stop_code == "BUDGET_EXHAUSTED":
+                    # 预算耗尽只记 stop_code，不重复计入 failure_code
+                    failed, failure_code = True, None
+            else:
+                decision = _workflow_decision(case["case_id"], model_factory)
+                stop_code = None
         else:
-            decision = _workflow_decision(case["case_id"], model_factory)
-            stop_code = None
-    else:
-        raise ValueError("未知的臂: " + str(arm))
+            raise ValueError("未知的臂: " + str(arm))
+    except StageTimeout as exc:
+        failed = True
+        failure_code = ("MODEL_TIMEOUT" if exc.stage == "model"
+                        else "TOOL_TIMEOUT")
+        notes.append("stage timeout: " + str(exc.stage))
+    except TimeoutError as exc:
+        failed, failure_code = True, "RUNNER_TIMEOUT"
+        notes.append(str(exc))
+    except Exception as exc:  # noqa: BLE001 - 失败必须留痕，不丢样本
+        failed, failure_code = True, "RUNNER_EXCEPTION"
+        notes.append(str(exc))
     latency = int((time.perf_counter() - started) * 1000)
     return RunRecord(
         case_id=case["case_id"], arm=arm, run_id=_run_id(arm, case["case_id"]),
         route=route, action="decide" if decision else "human_review",
         stop_code=stop_code, tool_calls=tool_calls, decision=decision,
-        latency_ms=latency, failed=failed, failure_code=failure_code, notes=notes,
+        latency_ms=latency, tokens=tokens, failed=failed,
+        failure_code=failure_code, notes=notes,
     )
 
 

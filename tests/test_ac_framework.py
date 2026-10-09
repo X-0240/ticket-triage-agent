@@ -64,7 +64,8 @@ def test_all_cases_have_records_for_both_arms():
         assert arms == {"A", "C"}
 
 
-def test_failures_are_recorded_not_dropped():
+def test_tool_execution_failure_is_recorded():
+    """只声明覆盖"工具执行失败"这一类，不暗示覆盖超时与预算耗尽。"""
     cases = make_cases(3)
     ids = {c["case_id"] for c in cases}
 
@@ -114,3 +115,62 @@ def test_route_statistics_from_records():
     in_subgraph = [r for r in c_records if r["route"] == routing.ROUTE_AMBIGUOUS]
     assert len(in_subgraph) == 2
     assert len(c_records) - len(in_subgraph) == 2
+
+
+def test_stage_timeout_recorded_via_runner_path():
+    """超时走运行器的真实处理路径：阶段化分类 + 记录留存 + token 记为未知。"""
+    cases = make_cases(1)
+    ids = {c["case_id"] for c in cases}
+
+    class ToolRequestModel:
+        def __init__(self, case_id, allowed):
+            self.case_id = case_id
+
+        def __call__(self, allowed_fact_ids, step):
+            return {"tool": "search_kb", "args": {"query": "退款"}}
+
+    def timeout_executor(case_id):
+        def _call(**kwargs):
+            raise ac_runner.StageTimeout("tool")
+        return _call
+
+    records = ac_runner.run_experiment(
+        cases, route_inputs(cases, ambiguous_ids=ids), ToolRequestModel,
+        timeout_executor, {}, None, lambda m, e: [],
+    )
+    c = [r for r in records if r["arm"] == "C"][0]
+    assert c["failed"] is True
+    assert c["failure_code"] == "TOOL_TIMEOUT"
+    assert c["tokens"] is None          # 拿不到用量 -> 未知，不是 0
+    assert c["latency_ms"] >= 0         # 超时也保留了耗时
+
+
+def test_budget_exhausted_propagates_to_runrecord():
+    """预算耗尽必须从子图传到 RunRecord.stop_code，且不重复填 failure_code。"""
+    cases = make_cases(1)
+    ids = {c["case_id"] for c in cases}
+
+    class EndlessModel:
+        def __init__(self, case_id, allowed):
+            self.step = 0
+
+        def __call__(self, allowed_fact_ids, step):
+            self.step += 1
+            return {"tool": "t%s" % self.step, "args": {"i": self.step}}
+
+    def unique_executor(case_id):
+        """每次返回**新**的 fact id，否则第二次就因"无新证据"提前停止。"""
+        counter = {"n": 0}
+
+        def _call(**kwargs):
+            counter["n"] += 1
+            return {"fact_ids": ["fact_new_%d" % counter["n"]], "facts": []}
+        return _call
+
+    records = ac_runner.run_experiment(
+        cases, route_inputs(cases, ambiguous_ids=ids), EndlessModel,
+        unique_executor, {}, None, lambda m, e: [], budget=2,
+    )
+    c = [r for r in records if r["arm"] == "C"][0]
+    assert c["stop_code"] == "BUDGET_EXHAUSTED"
+    assert c["failure_code"] is None
