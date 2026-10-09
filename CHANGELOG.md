@@ -114,3 +114,39 @@ W1 只做底座与管道，**不验收模型效果**。交付：两张表 + 取�
 
 - 原件 `gate_v1_decision.json` 保持原样（哈希锁死，改动即失败），派生件是**新增产物**；
 - 本批仍**没有**跑正式 A/C，也没有真实模型接入，因此没有任何业务效果结论。
+
+## v0.2.2（批次二：业务世界 + 真实接入，2026-10-10）
+
+正式 A/C 的两个前提补齐：① 三条动态取数模式要查的退款/政策/商品/历史数据，
+仓库里从来没有生成过（`refund` / `kb_article` / `order_line` 全为空）；
+② 真实模型与真实工具还没有接入代码。本批只补这两件事，**仍未跑正式对照**。
+
+| 项 | 内容 | 证据 |
+|---|---|---|
+| 业务世界 | 按业务情境确定性构造 50 条案例的世界（ticket 50 / orders 40 / order_line 40 / shipment 20 / refund 15 / kb_article 6），明确标注构造数据 | `scripts/derive_business_world.py`、`experiments/ac_v1/derived/business_world_v1.json` |
+| 隔离实验库 | 加载进 `ticketdesk_ac_v1`（可用 `DB_NAME_AC` 覆盖），与日常库同名即拒绝；加载后核对行数、主外键、工具可查性 | `scripts/load_experiment_db.py` |
+| 模型接入 | DeepSeek 官方 API：`deepseek-flash`、`temperature=0`、`thinking=disabled`、JSON 输出；空内容按输出结构失败处理 | `src/ticketdesk/model_client.py` |
+| 提示词 | 固定工作流判定与子图取证两套提示词，含 json 契约与示例；**不读 gold** | `src/ticketdesk/prompts.py` |
+| 真实接入 | 基础取数走真实工具、路由输入按规则 v1 确定性计算、tools 执行器与模型工厂可注入、token 用量回传运行记录 | `src/ticketdesk/ac_harness.py` |
+| 冒烟脚本 | 三个模式各 1 条，跑通链路并落盘 runs.jsonl / manifest.json / smoke.md | `scripts/ac_smoke.py` |
+
+### 本批定位到的接口缺口（已修）
+
+1. **"必要事实齐全"不能用全局词汇表判断**：`rule_status()` 只判断"工具理论上能不能取到"，
+   与"这次执行实际取到了没有"是两件事。若不区分，缺订单号的案例会被误判为事实齐全。
+   修法：路由输入按本次执行实际取到的事实类别（`FACT_CLASS`）判断，缺一类就不进硬事实档。
+2. **唯一候选 + 正文在问政策**：D-36~D-40 的唯一候选来自结构化事实，正文却在问保修。
+   修法：正文出现政策/商品类关键词（保修、质保、配件、换新…）时，唯一候选也必须先做
+   轻量一致性校验 → 进软事实档，而不是直接按硬事实放行。
+3. **软事实档此前没有真实校验器**：运行器只区分"歧义档"与"其余"，软档等价于固定路径。
+   修法：运行器接入 `checker_factory`，校验结果 `INCONSISTENT/UNCERTAIN` 安全转入歧义档。
+4. **token 用量恒为 None**：运行记录没有采集入口。修法：新增 `usage_factory`，
+   真实用量回传记录；拿不到仍是 None，不记 0。
+
+### 已知边界
+
+- 冒烟需要本机设置 `DEEPSEEK_API_KEY`；未设置时脚本**明确失败**而不是空跑；
+- 模型调用失败（HTTP / 空内容 / 坏 JSON）在冻结契约里没有独立错误码，当前按
+  `RUNNER_EXCEPTION / runner` 记录，并把真实类别写进 `notes`（如 `model_call:http_402`）；
+  若要给它独立错误码，需要新的协议修订；
+- 冒烟数字（事实条数、档位）只证明链路可用，**不是业务效果证据**。

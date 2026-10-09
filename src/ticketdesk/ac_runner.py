@@ -18,6 +18,7 @@ from ticketdesk import (
     agent_subgraph,
     evidence_adapter,
     failure_contract,
+    model_client,
     routing,
     verdict,
 )
@@ -112,15 +113,24 @@ def _record_failure(record, exc):
     else:
         record["failure_code"] = "RUNNER_EXCEPTION"
         record["failure_stage"] = "runner"
-        record["notes"].append(str(exc))
+        if isinstance(exc, model_client.ModelCallError):
+            # 冻结契约里没有"模型调用失败"这一类：先按 RUNNER_EXCEPTION 记录，
+            # 但把真实类别留在 notes，避免把 http/空内容/坏 JSON 混成一句 "异常"
+            record["notes"].append("model_call:%s %s" % (exc.kind, exc))
+        else:
+            record["notes"].append(str(exc))
 
 
 def run_case(arm, case, route_input, model_factory, executor_factory, budget=4,
-             registry_factory=None):
+             registry_factory=None, agent_model_factory=None,
+             checker_factory=None, usage_factory=None):
     """跑一案例的一臂；每次调用都新建模型与执行器（隔离）。
 
     `registry_factory`：给出证据适配层（`evidence_adapter.EvidenceRegistry`）时，
     工具返回会先做结构校验与事实登记；不给则直接消费注入执行器给的结构（测试替身）。
+    `agent_model_factory`：子图内部的模型调用器（带工具）；不传则复用 `model_factory`。
+    `checker_factory`：软事实档的轻量一致性校验器；不传则该档按固定路径处理。
+    `usage_factory`：`(case_id) -> () -> token 数或 None`，用于采集真实用量。
     """
     started = time.perf_counter()
     allowed = set(case.get("base_fact_ids") or [])
@@ -142,10 +152,21 @@ def run_case(arm, case, route_input, model_factory, executor_factory, budget=4,
             record["route"] = route
             # 路由原因码要留痕：协议要求给出"被路由到固定路径的原因码"
             record["route_reason"] = reason
+            if route == routing.ROUTE_SOFT and checker_factory is not None:
+                # 软事实档：跑一次轻量一致性校验；不一致/不确定都安全转入歧义档
+                outcome = routing.handle(
+                    route_input,
+                    statement=case.get("body"),
+                    checker=checker_factory(case["case_id"]),
+                )
+                route = outcome["route"]
+                record["route"] = route
+                record["route_reason"] = outcome.get("reason_code") or reason
             if route == routing.ROUTE_AMBIGUOUS:
                 out = agent_subgraph.run(
                     "ambiguous", allowed,
-                    model_factory(case["case_id"], sorted(allowed)),
+                    (agent_model_factory or model_factory)(
+                        case["case_id"], sorted(allowed)),
                     executor_factory(case["case_id"]), budget=budget,
                     registry=registry,
                 )
@@ -187,6 +208,8 @@ def run_case(arm, case, route_input, model_factory, executor_factory, budget=4,
         _record_failure(record, exc)
         decision = None
     latency = int((time.perf_counter() - started) * 1000)
+    if usage_factory is not None:
+        tokens = usage_factory(case["case_id"])()
     problems = (failure_contract.validate_failure(
         record["failure_code"], record["failure_stage"],
     ) if record["failure_code"] else [])
@@ -210,7 +233,8 @@ def run_case(arm, case, route_input, model_factory, executor_factory, budget=4,
 
 def run_experiment(cases, route_inputs, model_factory, executor_factory,
                    manifest_expected, manifest, problem_checker, budget=4,
-                   registry_factory=None):
+                   registry_factory=None, agent_model_factory=None,
+                   checker_factory=None, usage_factory=None):
     """跑完整对照。哈希不符直接拒绝，不产生记录。"""
     problems = problem_checker(manifest, manifest_expected)
     if problems:
@@ -221,5 +245,7 @@ def run_experiment(cases, route_inputs, model_factory, executor_factory,
             records.append(asdict(run_case(
                 arm, case, route_inputs[case["case_id"]], model_factory,
                 executor_factory, budget=budget, registry_factory=registry_factory,
+                agent_model_factory=agent_model_factory,
+                checker_factory=checker_factory, usage_factory=usage_factory,
             )))
     return records

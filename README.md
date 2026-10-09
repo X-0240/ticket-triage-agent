@@ -93,6 +93,29 @@ python scripts/derive_agent_needed_labels.py --check  # 校验派生件与重新
 + 3 个动态取数模式）；脚本先核对原件哈希、断言缺陷恰好出现一次，修正只发生在内存里，
 **不写回原件**。派生件与脚本的哈希都进正式 Manifest。
 
+## 业务世界与实验库（正式对照的前提）
+
+三条动态取数模式要查 `refund` / `kb_article` / `order_line` 与历史处置记录，仓库里
+原本没有生成过这些数据（表为空）。因此新增两个脚本：
+
+```bash
+python scripts/derive_business_world.py   # 派生构造业务世界（不读 gold）
+python scripts/load_experiment_db.py      # 加载进隔离实验库（默认 ticketdesk_ac_v1）
+python scripts/ac_smoke.py                # 三个模式各 1 条的真实接入冒烟
+```
+
+- 世界文件 `experiments/ac_v1/derived/business_world_v1.json` 明确标注为**构造数据**；
+  它只按 `business_state` / 冻结正文等业务情境生成，**不读** `expected_queue`、
+  `expected_priority`、`agent_needed`；时间字段是相对偏移，加载时换算成绝对时间。
+- 实验库与日常库（`DB_NAME`）**必须不同名**，否则加载器直接拒绝；日常库不受影响。
+- 真实接入冒烟只验证链路（模型调用、MySQL 取数、适配、引用、错误记录、token/耗时），
+  **不参与业务结论**。
+
+模型接入固定为 DeepSeek 官方 API：模型 `deepseek-flash`、base_url
+`https://api.deepseek.com`、`temperature=0`、`thinking={"type":"disabled"}`、
+`response_format={"type":"json_object"}`；密钥只从环境变量 `DEEPSEEK_API_KEY` 读，
+不进代码、不进 Manifest、不打印。
+
 ## 目录
 
 ```

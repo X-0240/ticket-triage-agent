@@ -46,6 +46,19 @@ def _thread_conn():
     return conn
 
 
+def use_database(name):
+    """把当前进程的默认库切到 `name`，并丢弃本线程已缓存的旧连接。
+
+    只给实验用：正式 A/C 在进程启动时切到隔离的实验库，让真实 `tools.py` 查它，
+    日常流程（迁移、种子、纵切、测试）不会调用它。
+    """
+    config.DB_NAME = name
+    conn = getattr(_local, "conn", None)
+    if conn is not None:
+        conn.close()
+        _local.conn = None
+
+
 @contextmanager
 def tx():
     conn = _thread_conn()
