@@ -5,6 +5,9 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# 冒烟产物是一次性调试残留；正式实验产物在 experiments/ac_v1/run_* 里，需要入库
+experiments/ac_v1/smoke_*/
 .pytest_cache/
 .ruff_cache/
 data/
