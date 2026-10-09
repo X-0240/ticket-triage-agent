@@ -49,6 +49,32 @@ def test_derived_labels_and_script_are_hashed():
     assert "agent_needed_labels_hash" in problems[0]
 
 
+def test_business_world_and_loader_are_hashed():
+    """正式运行还要记录业务世界与数据加载器的哈希，并逐项核验。"""
+    paths = em.ArtifactPaths.frozen_defaults()
+    manifest = em.build(paths, protocol_commit="8484f5fb")
+    assert manifest.business_world_hash == em.sha_of(paths.business_world)
+    assert manifest.data_loader_hash == em.sha_of(paths.data_loader)
+    for field in ("business_world_hash", "data_loader_hash"):
+        drifted = replace(manifest, **{field: "deadbeef"})
+        problems = em.verify_files(drifted, paths)
+        assert len(problems) == 1 and field in problems[0]
+
+
+def test_manifest_records_experiment_db_and_prompt_hash():
+    paths = em.ArtifactPaths.frozen_defaults()
+    manifest = em.build(
+        paths, protocol_commit="8484f5fb", prompt_hash="p9",
+        model_id="deepseek-flash", model_params={"temperature": 0},
+        experiment_db="ticketdesk_ac_v1", db_loaded_at="2026-10-10 03:00:26",
+    )
+    written = manifest.as_dict()
+    assert written["experiment_db"] == "ticketdesk_ac_v1"
+    assert written["db_loaded_at"] == "2026-10-10 03:00:26"
+    assert written["prompt_hash"] == "p9"
+    assert written["model_id"] == "deepseek-flash"
+
+
 def test_verify_files_detects_hash_drift():
     paths = em.ArtifactPaths.frozen_defaults()
     manifest = em.build(paths, protocol_commit="8484f5fb")
@@ -84,6 +110,8 @@ def test_verify_files_reports_missing_file(tmp_path):
         gate=paths.gate,
         agent_needed_labels=paths.agent_needed_labels,
         label_derivation_script=paths.label_derivation_script,
+        business_world=paths.business_world,
+        data_loader=paths.data_loader,
     )
     problems = em.verify_files(manifest, missing)
     assert len(problems) == 1

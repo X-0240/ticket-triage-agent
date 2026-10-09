@@ -37,6 +37,8 @@ class ArtifactPaths:
     gate: str
     agent_needed_labels: str
     label_derivation_script: str
+    business_world: str
+    data_loader: str
 
     @classmethod
     def frozen_defaults(cls):
@@ -59,6 +61,9 @@ class ArtifactPaths:
                                     / "agent_needed_labels_v1.json"),
             label_derivation_script=str(ROOT / "scripts"
                                         / "derive_agent_needed_labels.py"),
+            business_world=str(PROTOCOL_DIR / "derived"
+                               / "business_world_v1.json"),
+            data_loader=str(ROOT / "scripts" / "load_experiment_db.py"),
         )
 
 
@@ -105,16 +110,21 @@ class Manifest:
     gate_hash: str
     agent_needed_labels_hash: str
     label_derivation_script_hash: str
+    business_world_hash: str
+    data_loader_hash: str
     prompt_hash: str | None = None
     model_id: str | None = None
     model_params: dict = field(default_factory=dict)
+    experiment_db: str | None = None
+    db_loaded_at: str | None = None
 
     def as_dict(self):
         return asdict(self)
 
 
 def build(paths, protocol_commit, runner_commit=None, prompt_hash=None,
-          model_id=None, model_params=None):
+          model_id=None, model_params=None, experiment_db=None,
+          db_loaded_at=None):
     """按冻结件路径生成 Manifest（哈希全部现算，不手抄）。"""
     return Manifest(
         protocol_commit=protocol_commit,
@@ -130,9 +140,13 @@ def build(paths, protocol_commit, runner_commit=None, prompt_hash=None,
         gate_hash=sha_of(paths.gate),
         agent_needed_labels_hash=sha_of(paths.agent_needed_labels),
         label_derivation_script_hash=sha_of(paths.label_derivation_script),
+        business_world_hash=sha_of(paths.business_world),
+        data_loader_hash=sha_of(paths.data_loader),
         prompt_hash=prompt_hash,
         model_id=model_id,
         model_params=model_params or {},
+        experiment_db=experiment_db,
+        db_loaded_at=db_loaded_at,
     )
 
 
@@ -158,6 +172,8 @@ FILE_FIELDS = (
     ("gate_hash", "gate"),
     ("agent_needed_labels_hash", "agent_needed_labels"),
     ("label_derivation_script_hash", "label_derivation_script"),
+    ("business_world_hash", "business_world"),
+    ("data_loader_hash", "data_loader"),
 )
 
 
