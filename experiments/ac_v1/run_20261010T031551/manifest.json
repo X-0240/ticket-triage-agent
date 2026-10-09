@@ -1,0 +1,29 @@
+{
+  "protocol_commit": "8484f5fb",
+  "runner_commit": "6e415d8262b98f2bce3863fd62aeef6c7c3b02dd",
+  "worktree_dirty": false,
+  "protocol_hash": "e2259aa31067e319",
+  "protocol_amendment_01_hash": "1cd584c47fcf07a9",
+  "protocol_amendment_02_hash": "1cf1d35906ee3bf0",
+  "protocol_amendment_03_hash": "df529fe1f32dc7af",
+  "input_hash": "da1287bb144eb814",
+  "rules_hash": "baea0b7525b20897",
+  "gold_hash": "da1287bb144eb814",
+  "gate_hash": "307d022c3dc7b5ce",
+  "agent_needed_labels_hash": "9da6dd126ae773fe",
+  "label_derivation_script_hash": "9994e597d736f1ca",
+  "business_world_hash": "4dda6614511c6434",
+  "data_loader_hash": "d5aee3d3f491e2fe",
+  "prompt_hash": "8849a7a9a302b8c1",
+  "model_id": "deepseek-flash",
+  "model_params": {
+    "temperature": 0,
+    "thinking": "disabled",
+    "response_format": "json_object",
+    "max_tokens": 1200,
+    "subgraph_budget": 4,
+    "decision_question_from": "inputs_50.json"
+  },
+  "experiment_db": "ticketdesk_ac_v1",
+  "db_loaded_at": "2026-10-10 03:00:26"
+}

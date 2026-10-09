@@ -1,6 +1,7 @@
 """真实接入层的契约测试：提示词、模型客户端、路由输入、运行器扩展点（不联网）。"""
 
 import json
+import ssl
 
 import pytest
 
@@ -154,6 +155,40 @@ def test_missing_key_fails_before_request(monkeypatch):
     with pytest.raises(model_client.ModelCallError) as exc:
         model_client.api_key()
     assert exc.value.kind == "missing_key"
+
+
+def test_ssl_error_is_model_failure_not_runner_exception(monkeypatch):
+    """TLS 失败在模型请求这一侧：按修订 03 记 MODEL_FAILED / model。
+
+    正式运行里出现过裸 `ssl.SSLError`（BAD_RECORD_MAC）冒到运行器、被记成
+    RUNNER_EXCEPTION 的情况；这条测试锁住正确分类。
+    """
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key-not-used")
+
+    def opener(request, timeout=None):
+        raise ssl.SSLError(1, "BAD_RECORD_MAC")
+
+    client = model_client.DeepSeekClient(opener=opener)
+    with pytest.raises(model_client.ModelCallError) as exc:
+        client.complete([{"role": "user", "content": "x"}])
+    assert exc.value.kind == "network"
+
+    cases = make_cases(["D-01"])
+
+    class BrokenModel:
+        def __init__(self, case_id, allowed):
+            pass
+
+        def __call__(self, allowed_fact_ids, step):
+            raise model_client.ModelCallError("network", "SSL: BAD_RECORD_MAC")
+
+    records = ac_runner.run_experiment(
+        cases, ambiguous_inputs(cases), BrokenModel, ok_executor, {}, None,
+        lambda m, e: [],
+    )
+    for record in records:
+        assert record["failure_code"] == "MODEL_FAILED"
+        assert record["failure_stage"] == "model"
 
 
 def fact(field, value, fact_id):

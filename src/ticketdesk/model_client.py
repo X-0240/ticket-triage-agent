@@ -15,6 +15,7 @@
 
 import json
 import os
+import ssl
 import time
 import urllib.error
 import urllib.request
@@ -98,6 +99,10 @@ class DeepSeekClient:
         except TimeoutError as exc:
             # 超时单独一类：运行记录按 MODEL_TIMEOUT / model 记，不混进 MODEL_FAILED
             raise ModelCallError("timeout", str(exc)) from exc
+        except ssl.SSLError as exc:
+            # TLS 握手/传输失败发生在模型请求这一侧，属于模型调用失败（修订 03），
+            # 不能因为异常类型不是 URLError 就冒到运行器里记成 RUNNER_EXCEPTION
+            raise ModelCallError("network", "SSL: " + str(exc)) from exc
         except urllib.error.URLError as exc:
             if isinstance(exc.reason, TimeoutError):
                 raise ModelCallError("timeout", str(exc.reason)) from exc
