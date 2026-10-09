@@ -35,3 +35,54 @@ W1 只做底座与管道，**不验收模型效果**。交付：两张表 + 取�
 
 - W1 的桩只证明"系统能容纳一个被认为有歧义的 case"，**不判定它是否真的 Agent-needed**（W2 的事）；
 - 第一层止损（discovery gate）与 A/C 对照都在后续周次，未跑之前任何效果数字空缺。
+
+## v0.2.0（A/C 实验基础设施，2026-10-10）
+
+把 A/C 协议（`experiments/ac_v1/protocol.md` + 修订 01 + 修订 02）落成可执行、可验证的代码：
+失败分类、Manifest 三份协议哈希、评分汇总、端到端自检。**本批不接真实模型、不跑正式对照、
+不新增 Agent 能力**，因此没有任何业务效果结论。
+
+| 项 | 内容 | 证据 |
+|---|---|---|
+| 证据适配层 | 工具返回 → 统一证据格式；结构校验 + 事实身份 + 一次执行内稳定的 `fact_id` | `src/ticketdesk/evidence_adapter.py`、`tests/test_evidence_adapter.py` |
+| 失败分类 | 错误码 ↔ 阶段唯一映射；`INVALID_SCHEMA` 分 `model_output` / `tool_result`；语义错误走 `validation_code` | `src/ticketdesk/failure_contract.py`、`src/ticketdesk/verdict.py` |
+| 运行记录 | 新增 `failure_stage` / `timeout_stage` / `validation_code` / `route_reason` / `raw_output` | `src/ticketdesk/ac_runner.py` |
+| Manifest | 三份协议文件哈希分别记录，`verify_files()` 逐个读盘核对 | `src/ticketdesk/evidence_manifest.py`、`tests/test_manifest.py` |
+| 评分汇总 | `case_metrics.jsonl` / `summary.json` / `report.md`；覆盖率与条件准确率分开、产物不可覆盖 | `src/ticketdesk/ac_scoring.py`、`tests/test_ac_scoring.py` |
+| 端到端自检 | 哈希关 → 两臂记录覆盖 → 停止/失败码映射 → 评分 → 拒绝覆盖 | `tests/test_ac_e2e_selfcheck.py` |
+
+### 已修的问题（本批）
+
+1. **工具结果契约错位（会让真实模型路径直接失效）**：工具返回的是
+   `{"tool","found","ref","facts","error"}`，**没有顶层 `fact_ids`**；子图却按
+   `{"fact_ids","facts"}` 消费。根因是两头各自假定契约。修法：新增唯一适配层
+   （`evidence_adapter`）负责结构校验、事实登记与 `fact_id` 分配。
+2. **裸超时按"捕获位置"分类**：模型调用点没有 try/except，工具侧的 `except Exception`
+   把裸 `TimeoutError` 吃成 `TOOL_FAILED`。修法：在**调用点**就近标阶段
+   （`StageTimeout("model")` / `StageTimeout("tool")`），来源无法识别时才用
+   `TIMEOUT` + `timeout_stage="unknown"`；`RUNNER_TIMEOUT` 不当作兜底。教训：
+   异常的捕获位置不等于故障的发生位置。
+3. **"是否取得新证据"依赖会漂移的编号**：适配层若每次调用重新从 `fact_01` 编号，
+   重复事实会被当成新证据，`NO_NEW_EVIDENCE` 永不触发。修法：一次执行内的事实注册表，
+   同一条事实复用同一个 `fact_id`，新事实占用未使用的编号。
+4. **A 臂的判定节点拿不到基础证据**：`_workflow_decision` 用空列表调用模型，
+   等于让固定工作流"看不到证据"，对照会失效。修法：把本次执行的基础 evidence id
+   传给判定节点，并加回归测试。
+5. **`EvidenceRegistry` 引用了未初始化的 `_seen_ids`**：`new_fact_ids` 恒为空，
+   该字段语义实际未生效。修法：改为显式维护"本次执行已知 id 集合"。
+
+### 已登记、未修的问题
+
+1. **`experiments/discovery/gate_v1_decision.json` 不是合法 JSON**：`notes` 数组里
+   两个字符串字面量之间漏了逗号（Python 式的隐式拼接在 JSON 里非法），
+   `json.load()` 会直接报 `Expecting ',' delimiter: line 36`。它是冻结证据，
+   **本轮不改**；评分层因此把 `agent_needed` 标签做成外部入参，而不是自己去解析该文件。
+   正式运行前需要决定：单独出一份机器可读的标签派生件，还是先修冻结件语法（需明确授权）。
+2. **`scripts/` 有 3 条 ruff 告警**（`generate_cases.py` 的 I001/F401、`repro.py` 的 F401），
+   都是本批之前提交的代码，未在本次一并清理，避免把无关重排混进本批 diff。
+
+### 边界
+
+- 本批只证明**框架**可信（哈希关、覆盖、失败留痕、统计口径），**不证明 Agent 有业务增益**；
+- 是否保留 Agent，仍由正式 A/C 对照（一批、只跑一轮）按修订 02 的止损规则决定；
+- 正式运行产物写入独立目录，已存在即拒绝覆盖。
