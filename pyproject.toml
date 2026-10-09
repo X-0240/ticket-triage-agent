@@ -1,4 +1,5 @@
-# 代码规范：ruff 检查 + Black 排版，行宽 80（与项目二保持一致）
+# 检查规范（强制项见 README「检查规范」）：ruff check src tests
+# Black 只保留为可选排版配置，**不作为验收门槛**；本仓库未做全仓格式化
 [tool.black]
 line-length = 80
 target-version = ["py310"]

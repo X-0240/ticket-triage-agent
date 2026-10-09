@@ -46,6 +46,7 @@ def test_hash_mismatch_refuses_to_run():
         protocol_hash="p0", protocol_amendment_01_hash="p1",
         protocol_amendment_02_hash="p2",
         input_hash="aaaa", rules_hash="bbbb", gold_hash="cccc", gate_hash="dddd",
+        agent_needed_labels_hash="l0", label_derivation_script_hash="s0",
     )
     with pytest.raises(ac_runner.HashMismatch):
         ac_runner.run_experiment(

@@ -33,6 +33,21 @@ def test_verify_files_passes_on_frozen_artifacts():
     assert em.verify_files(manifest, paths) == []
 
 
+def test_derived_labels_and_script_are_hashed():
+    """正式运行用的是派生标签件：它和派生脚本的哈希都要进 Manifest 并被核验。"""
+    paths = em.ArtifactPaths.frozen_defaults()
+    manifest = em.build(paths, protocol_commit="8484f5fb")
+    assert manifest.agent_needed_labels_hash == em.sha_of(
+        paths.agent_needed_labels)
+    assert manifest.label_derivation_script_hash == em.sha_of(
+        paths.label_derivation_script)
+    assert manifest.agent_needed_labels_hash != manifest.gate_hash
+    drifted = replace(manifest, agent_needed_labels_hash="deadbeef")
+    problems = em.verify_files(drifted, paths)
+    assert len(problems) == 1
+    assert "agent_needed_labels_hash" in problems[0]
+
+
 def test_verify_files_detects_hash_drift():
     paths = em.ArtifactPaths.frozen_defaults()
     manifest = em.build(paths, protocol_commit="8484f5fb")
@@ -54,6 +69,8 @@ def test_verify_files_reports_missing_file(tmp_path):
         rules=paths.rules,
         gold=paths.gold,
         gate=paths.gate,
+        agent_needed_labels=paths.agent_needed_labels,
+        label_derivation_script=paths.label_derivation_script,
     )
     problems = em.verify_files(manifest, missing)
     assert len(problems) == 1

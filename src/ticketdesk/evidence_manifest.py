@@ -5,6 +5,9 @@
 
 三份协议文件（原协议 + 修订 01 + 修订 02）的哈希**分别记录**，不用一个通用字段反复覆盖；
 `verify_files()` 会重新读盘逐个核对，防止冻结件在正式运行前被改动。
+
+冻结 Gate 记录不是合法 JSON（见 `scripts/derive_agent_needed_labels.py` 的说明），
+因此正式运行用的是**派生标签文件**；它的哈希与派生脚本的哈希同样进 Manifest。
 """
 
 import hashlib
@@ -31,6 +34,8 @@ class ArtifactPaths:
     rules: str
     gold: str
     gate: str
+    agent_needed_labels: str
+    label_derivation_script: str
 
     @classmethod
     def frozen_defaults(cls):
@@ -48,11 +53,21 @@ class ArtifactPaths:
             rules=str(ROOT / "fixtures" / "discovery" / "rules_v1.json"),
             gold=str(DISCOVERY_DIR / "inputs_50.json"),
             gate=str(DISCOVERY_DIR / "gate_v1_decision.json"),
+            agent_needed_labels=str(PROTOCOL_DIR / "derived"
+                                    / "agent_needed_labels_v1.json"),
+            label_derivation_script=str(ROOT / "scripts"
+                                        / "derive_agent_needed_labels.py"),
         )
 
 
 def sha_of(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
+    """冻结件哈希（前 16 位）。
+
+    先把 CRLF 归一化成 LF 再算：否则同一份内容在 Windows 检出与 Linux 检出上会得到
+    两个哈希，`verify_files()` 就会报假漂移。归一化只影响换行，不改内容。
+    """
+    raw = Path(path).read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(raw).hexdigest()[:16]
 
 
 def git_commit(path="HEAD"):
@@ -85,6 +100,8 @@ class Manifest:
     rules_hash: str
     gold_hash: str
     gate_hash: str
+    agent_needed_labels_hash: str
+    label_derivation_script_hash: str
     prompt_hash: str | None = None
     model_id: str | None = None
     model_params: dict = field(default_factory=dict)
@@ -107,6 +124,8 @@ def build(paths, protocol_commit, runner_commit=None, prompt_hash=None,
         rules_hash=sha_of(paths.rules),
         gold_hash=sha_of(paths.gold),
         gate_hash=sha_of(paths.gate),
+        agent_needed_labels_hash=sha_of(paths.agent_needed_labels),
+        label_derivation_script_hash=sha_of(paths.label_derivation_script),
         prompt_hash=prompt_hash,
         model_id=model_id,
         model_params=model_params or {},
@@ -132,6 +151,8 @@ FILE_FIELDS = (
     ("rules_hash", "rules"),
     ("gold_hash", "gold"),
     ("gate_hash", "gate"),
+    ("agent_needed_labels_hash", "agent_needed_labels"),
+    ("label_derivation_script_hash", "label_derivation_script"),
 )
 
 

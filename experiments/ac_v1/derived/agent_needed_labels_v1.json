@@ -1,0 +1,125 @@
+{
+  "kind": "ac_v1_agent_needed_labels",
+  "version": "v1",
+  "frozen_cases": 50,
+  "agent_needed_true": 15,
+  "labels": {
+    "D-01": false,
+    "D-02": false,
+    "D-03": false,
+    "D-04": false,
+    "D-05": false,
+    "D-06": false,
+    "D-07": false,
+    "D-08": false,
+    "D-09": false,
+    "D-10": false,
+    "D-11": false,
+    "D-12": false,
+    "D-13": false,
+    "D-14": false,
+    "D-15": false,
+    "D-16": true,
+    "D-17": true,
+    "D-18": true,
+    "D-19": true,
+    "D-20": true,
+    "D-21": false,
+    "D-22": false,
+    "D-23": false,
+    "D-24": false,
+    "D-25": false,
+    "D-26": true,
+    "D-27": true,
+    "D-28": true,
+    "D-29": true,
+    "D-30": true,
+    "D-31": false,
+    "D-32": false,
+    "D-33": false,
+    "D-34": false,
+    "D-35": false,
+    "D-36": true,
+    "D-37": true,
+    "D-38": true,
+    "D-39": true,
+    "D-40": true,
+    "D-41": false,
+    "D-42": false,
+    "D-43": false,
+    "D-44": false,
+    "D-45": false,
+    "D-46": false,
+    "D-47": false,
+    "D-48": false,
+    "D-49": false,
+    "D-50": false
+  },
+  "agent_needed_cases": [
+    "D-16",
+    "D-17",
+    "D-18",
+    "D-19",
+    "D-20",
+    "D-26",
+    "D-27",
+    "D-28",
+    "D-29",
+    "D-30",
+    "D-36",
+    "D-37",
+    "D-38",
+    "D-39",
+    "D-40"
+  ],
+  "patterns": [
+    {
+      "name": "履约状态 + 退款资格/取消规则 联合判断",
+      "cases": [
+        "D-16",
+        "D-17",
+        "D-18",
+        "D-19",
+        "D-20"
+      ],
+      "note": ""
+    },
+    {
+      "name": "物流异常详情 + 退款规则 + 历史处理记录",
+      "cases": [
+        "D-26",
+        "D-27",
+        "D-28",
+        "D-29",
+        "D-30"
+      ],
+      "note": ""
+    },
+    {
+      "name": "保修条款核查 + 商品关联",
+      "cases": [
+        "D-36",
+        "D-37",
+        "D-38",
+        "D-39",
+        "D-40"
+      ],
+      "note": "唯一候选与正文语义冲突"
+    }
+  ],
+  "source": {
+    "file": "experiments/discovery/gate_v1_decision.json",
+    "sha256": "307d022c3dc7b5ce36ffd7f94e390182d287791effbf351db529063ad1a4328c",
+    "sha256_raw_bytes": "307d022c3dc7b5ce36ffd7f94e390182d287791effbf351db529063ad1a4328c",
+    "sha256_note": "sha256 按 LF 归一化计算；sha256_raw_bytes 为本机原始字节值",
+    "kind": "discovery_gate_decision",
+    "gate_result": "PASS",
+    "decided_at": "2026-10-09"
+  },
+  "conversion": "原件为冻结证据且不是合法 JSON（notes 数组内两个字符串字面量之间缺一个逗号），因此不改原件：先在内存中核对 SHA-256，再断言该缺陷恰好出现一次并插入一个逗号，然后用标准 json 解析器读取 agent_needed_cases 与 dynamic_patterns，补全全部冻结案例的布尔标签。没有永久性容错解析。",
+  "derivation_script": {
+    "path": "scripts/derive_agent_needed_labels.py",
+    "version": "v1",
+    "sha256": "9994e597d736f1ca7da951d51a58dbe0986175eb0dffc841a87cf42ec7b06d8b"
+  }
+}

@@ -32,6 +32,41 @@ def _mean(values):
     return round(sum(values) / len(values), 4) if values else None
 
 
+def load_labels(path, cases):
+    """读派生标签文件并核对覆盖；缺失、重复、多余一律报错。
+
+    参数：
+        path：`experiments/ac_v1/derived/agent_needed_labels_v1.json`。
+        cases：冻结案例（核对覆盖用，避免"标签少了几条也算过"）。
+
+    返回 dict：`{"agent_needed": [...], "patterns": {case_id: 模式名}}`。
+    异常：覆盖不齐、计数不符、案例被多个模式覆盖时抛 `ValueError`。
+    """
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    labels = payload.get("labels") or {}
+    case_ids = [case["case_id"] for case in cases]
+    if len(case_ids) != len(set(case_ids)):
+        raise ValueError("冻结案例里有重复 case_id")
+    known = set(case_ids)
+    missing = [case_id for case_id in case_ids if case_id not in labels]
+    extra = sorted(case_id for case_id in labels if case_id not in known)
+    if missing or extra:
+        raise ValueError("标签覆盖不齐：缺失 %s，多余 %s" % (missing, extra))
+    if payload.get("agent_needed_true") != sum(1 for value in labels.values()
+                                               if value):
+        raise ValueError("agent_needed_true 与逐案例标签不一致")
+    needed = [case_id for case_id in case_ids if labels[case_id]]
+    by_case = {}
+    for item in payload.get("patterns") or []:
+        for case_id in item["cases"]:
+            if case_id in by_case:
+                raise ValueError("案例被多个动态模式覆盖: " + case_id)
+            by_case[case_id] = item["name"]
+    if set(by_case) != set(needed):
+        raise ValueError("动态模式覆盖与 agent_needed 标签不一致")
+    return {"agent_needed": needed, "patterns": by_case}
+
+
 def build_case_rows(records, cases, agent_needed=(), patterns=None):
     """逐案例（每臂一行）的评分行；缺运行记录也留行。"""
     agent_needed = set(agent_needed)

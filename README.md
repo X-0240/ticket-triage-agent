@@ -66,6 +66,33 @@ pytest tests -q
 `scripts/*.py` 都会自己把 `src` 加进 `sys.path`，不需要手工设 `PYTHONPATH`；
 `.env` 自行从 `.env.example` 复制并填值，密钥不入库。
 
+## 检查规范（只写实际执行的检查）
+
+| 检查 | 约定 |
+|---|---|
+| `pytest tests -q` | 完整回归，必须通过 |
+| `ruff check src tests` | 强制静态检查。**范围仅限这两个路径**，不能据此宣称整仓 Ruff clean |
+| 本轮新增或修改的脚本 | 单独纳入检查（如 `ruff check scripts/derive_agent_needed_labels.py`），不继承旧脚本的告警盲区 |
+| `black --check` | **不作为强制验收门槛**：本仓库没有做过全仓格式化，`[tool.black]` 只是可选的排版配置 |
+
+已知残留：`scripts/generate_cases.py`、`scripts/repro.py` 有 3 条历史 ruff 告警
+（早于本规范，未清理），因此"Ruff clean"只对 `src tests` 成立。
+
+## A/C 实验的标签派生
+
+冻结的 Gate 记录 `experiments/discovery/gate_v1_decision.json` **不是合法 JSON**
+（`notes` 数组里两个字符串字面量之间缺一个逗号），但它仍是不能改的原始证据。
+正式对照用派生标签件，派生过程可复现：
+
+```bash
+python scripts/derive_agent_needed_labels.py          # 生成派生件
+python scripts/derive_agent_needed_labels.py --check  # 校验派生件与重新派生一致
+```
+
+派生件：`experiments/ac_v1/derived/agent_needed_labels_v1.json`（50 条案例的布尔标签
++ 3 个动态取数模式）；脚本先核对原件哈希、断言缺陷恰好出现一次，修正只发生在内存里，
+**不写回原件**。派生件与脚本的哈希都进正式 Manifest。
+
 ## 目录
 
 ```

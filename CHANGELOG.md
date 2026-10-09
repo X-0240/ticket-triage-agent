@@ -86,3 +86,31 @@ W1 只做底座与管道，**不验收模型效果**。交付：两张表 + 取�
 - 本批只证明**框架**可信（哈希关、覆盖、失败留痕、统计口径），**不证明 Agent 有业务增益**；
 - 是否保留 Agent，仍由正式 A/C 对照（一批、只跑一轮）按修订 02 的止损规则决定；
 - 正式运行产物写入独立目录，已存在即拒绝覆盖。
+
+## v0.2.1（批次二起步：标签派生与检查规范，2026-10-10）
+
+正式 A/C 需要的 `agent_needed` 标签来自冻结 Gate 记录，而那份记录不是合法 JSON。
+按评审决定：**不改原件**，改为一次可复现的派生；同时把项目的检查规范改成如实描述。
+
+| 项 | 内容 | 证据 |
+|---|---|---|
+| 派生脚本 | 核对原件哈希 → 断言缺陷恰好出现一次 → 内存内修正 → 标准解析 → 生成标签 | `scripts/derive_agent_needed_labels.py` |
+| 派生件 | 50 条案例布尔标签 + 15 条 agent_needed + 3 个动态取数模式 | `experiments/ac_v1/derived/agent_needed_labels_v1.json` |
+| Manifest | 新增 `agent_needed_labels_hash`、`label_derivation_script_hash`，`verify_files()` 一并核对 | `tests/test_manifest.py` |
+| 标签消费 | `load_labels()` 核对覆盖（缺失/重复/多余即报错） | `src/ticketdesk/ac_scoring.py`、`tests/test_label_derivation.py` |
+| 检查规范 | 明确 `ruff check src tests` 为强制项、Black 不作门槛 | `README.md`、`pyproject.toml` |
+
+### 已修的问题（本批）
+
+1. **哈希对换行敏感**：直接对原始字节算 SHA-256，同一份内容在 CRLF 与 LF 检出下会得到
+   两个哈希，`verify_files()` 会报假漂移（本仓库 `inputs_50.json` 在盘上是 CRLF，
+   其余冻结件是 LF，混在一起更明显）。修法：`sha_of()` 与派生脚本都按 LF 归一化后计算，
+   派生件同时记录原始字节值 `sha256_raw_bytes` 备查。
+2. **派生脚本首次运行就暴露"缺陷不止一种形态"**：第三个动态模式是
+   `（D-36~D-40，唯一候选与正文语义冲突）`，区间后面还带说明文字，按"区间必须在末尾"
+   解析会失败。修法：允许区间后带尾巴，并把尾巴作为 `note` 原样保留。
+
+### 边界
+
+- 原件 `gate_v1_decision.json` 保持原样（哈希锁死，改动即失败），派生件是**新增产物**；
+- 本批仍**没有**跑正式 A/C，也没有真实模型接入，因此没有任何业务效果结论。
