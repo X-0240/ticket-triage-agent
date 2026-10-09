@@ -107,6 +107,45 @@ def test_client_returns_content_and_model_id(monkeypatch):
     assert client.returned_models == ["DeepSeek-V4.1-Flash"]
 
 
+def test_request_body_really_carries_thinking_and_temperature(monkeypatch):
+    """不只看 payload()：实际发出去的 HTTP 请求体必须带 thinking / temperature。
+
+    我们直接发 JSON（不走 SDK），所以 `thinking` 就写在请求体里，不需要
+    SDK 的 `extra_body`；这条测试用捕获到的请求字节证明这一点。
+    """
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key-not-used")
+    captured = {}
+
+    def opener(request, timeout=None):
+        captured["url"] = request.full_url
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        headers = {key.lower(): value for key, value in request.headers.items()}
+        captured["auth"] = headers.get("authorization", "")
+        body = json.dumps({"model": "DeepSeek-V4.1-Flash",
+                           "choices": [{"message": {"content": '{"ok": 1}'}}],
+                           "usage": {}})
+        return FakeResponse(body)
+
+    client = model_client.DeepSeekClient(opener=opener)
+    client.complete([{"role": "user", "content": "x"}], max_tokens=321)
+    assert captured["url"] == "https://api.deepseek.com/chat/completions"
+    assert captured["body"]["model"] == "deepseek-flash"
+    assert captured["body"]["temperature"] == 0
+    assert captured["body"]["thinking"] == {"type": "disabled"}
+    assert captured["body"]["response_format"] == {"type": "json_object"}
+    assert captured["body"]["max_tokens"] == 321
+    assert captured["auth"].startswith("Bearer ")
+    assert "test-key-not-used" not in json.dumps(captured["body"])
+
+
+def test_api_key_follows_env_or_dotenv_convention(monkeypatch):
+    """密钥来源遵循项目约定：环境变量，或由 config 导入时加载的项目 .env。"""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "dummy-key")
+    assert model_client.api_key() == "dummy-key"
+    # model_client 导入 config 即触发 load_dotenv(.env)，两条来源读取同一个变量
+    assert model_client.config.ROOT.name == "ticket-triage-agent"
+
+
 def test_missing_key_fails_before_request(monkeypatch):
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     with pytest.raises(model_client.ModelCallError) as exc:

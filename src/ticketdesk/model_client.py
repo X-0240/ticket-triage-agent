@@ -19,6 +19,10 @@ import time
 import urllib.error
 import urllib.request
 
+from ticketdesk import (
+    config,  # noqa: F401 - 导入即加载项目 .env（项目约定：环境变量或 .env）
+)
+
 DEFAULT_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "deepseek-flash"
 API_KEY_ENV = "DEEPSEEK_API_KEY"
@@ -33,7 +37,11 @@ class ModelCallError(RuntimeError):
 
 
 def api_key():
-    """读密钥；没有就明确失败（不落库、不打印）。"""
+    """读密钥；没有就明确失败（不落库、不打印）。
+
+    按项目既有约定（见 `config.py`）密钥可以放在环境变量或项目 `.env` 里：
+    `.env` 由 `config` 在导入时用 `load_dotenv` 加载，这里读的是同一个环境变量。
+    """
     key = os.getenv(API_KEY_ENV)
     if not key:
         raise ModelCallError(
