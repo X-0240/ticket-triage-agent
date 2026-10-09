@@ -150,3 +150,34 @@ W1 只做底座与管道，**不验收模型效果**。交付：两张表 + 取�
   `RUNNER_EXCEPTION / runner` 记录，并把真实类别写进 `notes`（如 `model_call:http_402`）；
   若要给它独立错误码，需要新的协议修订；
 - 冒烟数字（事实条数、档位）只证明链路可用，**不是业务效果证据**。
+
+## v0.2.3（协议修订 03：模型失败分类，2026-10-10）
+
+真实模型接入必须先解决一处错误分类：模型接口返回 401/402/429/5xx 时被记成
+`RUNNER_EXCEPTION / runner`，等于把明确的模型阶段故障推给运行器。按评审决定新增
+**协议修订 03**（`experiments/ac_v1/protocol_amendment_03.md`），原协议与修订 01/02 不改。
+
+| 情况 | 记录 |
+|---|---|
+| 模型 API 调用失败（401/402/429/5xx、连接失败、缺密钥） | `MODEL_FAILED / model` |
+| 模型调用超时 | `MODEL_TIMEOUT / model`（并填 `timeout_stage`） |
+| 接口已响应但内容为空 / 非法 JSON / 结构不合法 | `INVALID_SCHEMA / model_output` |
+| 来源无法识别的超时 | `TIMEOUT / unknown` |
+| 运行器自身未分类异常 | `RUNNER_EXCEPTION / runner` |
+
+落地改动：
+
+- `src/ticketdesk/failure_contract.py`：`FAILURE_MAP` 增加 `MODEL_FAILED → {model}`；
+- `src/ticketdesk/model_client.py`：超时单独归为 `timeout` 类别（不再混进 `network`）；
+- `src/ticketdesk/ac_runner.py`：模型阶段故障统一走 `_record_model_failure()`，
+  `RUNNER_EXCEPTION` 只留给运行器自身确实无法归类的异常；原始类别写进 `notes`
+  （`model_call:http_402`），不含密钥与完整响应体；
+- `src/ticketdesk/evidence_manifest.py`：Manifest 增加 `protocol_amendment_03_hash`，
+  `verify_files()` 一并核验（四份协议文件四个哈希）。
+
+### 边界
+
+- 本批不改路由规则、提示词、预算与停止条件，也不新增 Agent 能力；
+- 生成参数按评审决定固定为 `thinking=disabled` + `temperature=0`（思考模式下
+  temperature 不生效，若两臂模式不同就不能声称控制了随机性）；A、C 两臂共用同一配置；
+- 仍未跑正式对照：真实冒烟需要本机设置 `DEEPSEEK_API_KEY`。

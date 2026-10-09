@@ -63,3 +63,16 @@ def test_runner_timeout_is_reserved_not_fabricated():
     """RUNNER_TIMEOUT 保留在契约里，但当前没有运行器超时机制，不应被当通用兜底。"""
     assert "RUNNER_TIMEOUT" in fc.FAILURE_MAP
     assert fc.timeout_record_fields()["failure_code"] != "RUNNER_TIMEOUT"
+
+
+def test_model_failed_is_model_stage_only():
+    """修订 03：接口/连接失败属于模型阶段，不能推给运行器。"""
+    assert fc.validate_failure("MODEL_FAILED", "model") == []
+    assert fc.validate_failure("MODEL_FAILED", "runner")
+    assert fc.validate_failure("MODEL_FAILED", None)
+    # 反向：运行器自身异常也不能冒充模型阶段
+    assert fc.validate_failure("RUNNER_EXCEPTION", "model")
+    assert fc.validate_failure("RUNNER_EXCEPTION", "runner") == []
+    # 超时不能用 MODEL_FAILED 顶替
+    assert fc.validate_failure("MODEL_FAILED", "model") == []
+    assert fc.timeout_record_fields("model")["failure_code"] == "MODEL_TIMEOUT"

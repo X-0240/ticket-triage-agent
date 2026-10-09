@@ -3,7 +3,7 @@
 评审口径：协议提交是实验规则的冻结点，不等于运行器的代码版本。运行器尚未提交时，
 `runner_commit` 必须为 None，**不得把当前 HEAD 冒充成未来的执行版本**。
 
-三份协议文件（原协议 + 修订 01 + 修订 02）的哈希**分别记录**，不用一个通用字段反复覆盖；
+四份协议文件（原协议 + 修订 01 / 02 / 03）的哈希**分别记录**，不用一个通用字段反复覆盖；
 `verify_files()` 会重新读盘逐个核对，防止冻结件在正式运行前被改动。
 
 冻结 Gate 记录不是合法 JSON（见 `scripts/derive_agent_needed_labels.py` 的说明），
@@ -30,6 +30,7 @@ class ArtifactPaths:
     protocol: str
     amendment_01: str
     amendment_02: str
+    amendment_03: str
     inputs: str
     rules: str
     gold: str
@@ -49,6 +50,7 @@ class ArtifactPaths:
             protocol=str(PROTOCOL_DIR / "protocol.md"),
             amendment_01=str(PROTOCOL_DIR / "protocol_amendment_01.md"),
             amendment_02=str(PROTOCOL_DIR / "protocol_amendment_02.md"),
+            amendment_03=str(PROTOCOL_DIR / "protocol_amendment_03.md"),
             inputs=str(DISCOVERY_DIR / "inputs_50.json"),
             rules=str(ROOT / "fixtures" / "discovery" / "rules_v1.json"),
             gold=str(DISCOVERY_DIR / "inputs_50.json"),
@@ -96,6 +98,7 @@ class Manifest:
     protocol_hash: str
     protocol_amendment_01_hash: str
     protocol_amendment_02_hash: str
+    protocol_amendment_03_hash: str
     input_hash: str
     rules_hash: str
     gold_hash: str
@@ -120,6 +123,7 @@ def build(paths, protocol_commit, runner_commit=None, prompt_hash=None,
         protocol_hash=sha_of(paths.protocol),
         protocol_amendment_01_hash=sha_of(paths.amendment_01),
         protocol_amendment_02_hash=sha_of(paths.amendment_02),
+        protocol_amendment_03_hash=sha_of(paths.amendment_03),
         input_hash=sha_of(paths.inputs),
         rules_hash=sha_of(paths.rules),
         gold_hash=sha_of(paths.gold),
@@ -147,6 +151,7 @@ FILE_FIELDS = (
     ("protocol_hash", "protocol"),
     ("protocol_amendment_01_hash", "amendment_01"),
     ("protocol_amendment_02_hash", "amendment_02"),
+    ("protocol_amendment_03_hash", "amendment_03"),
     ("input_hash", "inputs"),
     ("rules_hash", "rules"),
     ("gold_hash", "gold"),

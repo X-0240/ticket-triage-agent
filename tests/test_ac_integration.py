@@ -309,3 +309,79 @@ def test_usage_factory_feeds_run_record():
     )
     assert all(record["tokens"] == 0 for record in records)
     assert records[0]["tokens"] is not None      # 明确采集到 0 ≠ 拿不到用量
+
+
+# ---- 协议修订 03：模型阶段故障不许记成运行器故障 ----
+
+
+@pytest.mark.parametrize("kind,expected", [
+    ("http_401", ("MODEL_FAILED", "model")),
+    ("http_402", ("MODEL_FAILED", "model")),
+    ("http_429", ("MODEL_FAILED", "model")),
+    ("http_500", ("MODEL_FAILED", "model")),
+    ("network", ("MODEL_FAILED", "model")),
+    ("missing_key", ("MODEL_FAILED", "model")),
+    ("empty_content", ("INVALID_SCHEMA", "model_output")),
+    ("bad_json", ("INVALID_SCHEMA", "model_output")),
+])
+def test_model_call_failures_are_classified(kind, expected):
+    """来源明确的模型故障按修订 03 分类；RUNNER_EXCEPTION 不再兜底。"""
+    cases = make_cases(["D-01"])
+
+    class BrokenModel:
+        def __init__(self, case_id, allowed):
+            pass
+
+        def __call__(self, allowed_fact_ids, step):
+            raise model_client.ModelCallError(kind, "脱敏摘要")
+
+    records = ac_runner.run_experiment(
+        cases, ambiguous_inputs(cases), BrokenModel, ok_executor, {}, None,
+        lambda m, e: [],
+    )
+    for record in records:
+        assert (record["failure_code"], record["failure_stage"]) == expected
+        assert record["failure_code"] != "RUNNER_EXCEPTION"
+        assert any(note.startswith("model_call:" + kind)
+                   for note in record["notes"])
+
+
+def test_model_timeout_kind_maps_to_model_timeout():
+    """模型侧超时 → MODEL_TIMEOUT / model，并填 timeout_stage。"""
+    cases = make_cases(["D-01"])
+
+    class SlowModel:
+        def __init__(self, case_id, allowed):
+            pass
+
+        def __call__(self, allowed_fact_ids, step):
+            raise model_client.ModelCallError("timeout", "读超时")
+
+    records = ac_runner.run_experiment(
+        cases, ambiguous_inputs(cases), SlowModel, ok_executor, {}, None,
+        lambda m, e: [],
+    )
+    for record in records:
+        assert record["failure_code"] == "MODEL_TIMEOUT"
+        assert record["failure_stage"] == "model"
+        assert record["timeout_stage"] == "model"
+
+
+def test_unknown_runner_exception_still_runner_exception():
+    """反例保护：确属运行器自身、无法归类的异常仍记 RUNNER_EXCEPTION。"""
+    cases = make_cases(["D-01"])
+
+    class ExplodingModel:
+        def __init__(self, case_id, allowed):
+            pass
+
+        def __call__(self, allowed_fact_ids, step):
+            raise RuntimeError("运行器内部的意外")
+
+    records = ac_runner.run_experiment(
+        cases, ambiguous_inputs(cases), ExplodingModel, ok_executor, {}, None,
+        lambda m, e: [],
+    )
+    for record in records:
+        assert record["failure_code"] == "RUNNER_EXCEPTION"
+        assert record["failure_stage"] == "runner"

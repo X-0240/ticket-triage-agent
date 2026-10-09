@@ -5,17 +5,18 @@ from dataclasses import replace
 from ticketdesk import evidence_manifest as em
 
 
-def test_three_protocol_hashes_recorded_separately():
-    """原协议与两份修订件各有自己的字段，不能用一个通用字段反复覆盖。"""
+def test_protocol_hashes_recorded_separately():
+    """原协议与三份修订件各有自己的字段，不能用一个通用字段反复覆盖。"""
     paths = em.ArtifactPaths.frozen_defaults()
     manifest = em.build(paths, protocol_commit="8484f5fb")
     fields = ("protocol_hash", "protocol_amendment_01_hash",
-              "protocol_amendment_02_hash")
+              "protocol_amendment_02_hash", "protocol_amendment_03_hash")
     values = {field: getattr(manifest, field) for field in fields}
-    for field, attr in zip(fields, ("protocol", "amendment_01", "amendment_02")):
+    for field, attr in zip(fields, ("protocol", "amendment_01", "amendment_02",
+                                    "amendment_03")):
         assert values[field] == em.sha_of(getattr(paths, attr))
         assert values[field]
-    assert len(set(values.values())) == 3      # 三份文件三个不同哈希
+    assert len(set(values.values())) == 4      # 四份文件四个不同哈希
     # 协议冻结点与实际执行代码版本分开记录：未跑正式实验前 runner_commit 必须为空
     assert manifest.protocol_commit == "8484f5fb"
     assert manifest.runner_commit is None
@@ -58,6 +59,17 @@ def test_verify_files_detects_hash_drift():
     assert em.verify_files(tampered, paths) != em.verify_files(manifest, paths)
 
 
+def test_amendment_03_hash_is_recorded_and_verified():
+    """修订 03（模型失败分类）也要进 Manifest 并被核验。"""
+    paths = em.ArtifactPaths.frozen_defaults()
+    manifest = em.build(paths, protocol_commit="8484f5fb")
+    assert manifest.protocol_amendment_03_hash == em.sha_of(paths.amendment_03)
+    drifted = replace(manifest, protocol_amendment_03_hash="deadbeef")
+    problems = em.verify_files(drifted, paths)
+    assert len(problems) == 1
+    assert "protocol_amendment_03_hash" in problems[0]
+
+
 def test_verify_files_reports_missing_file(tmp_path):
     paths = em.ArtifactPaths.frozen_defaults()
     manifest = em.build(paths, protocol_commit="8484f5fb")
@@ -65,6 +77,7 @@ def test_verify_files_reports_missing_file(tmp_path):
         protocol=str(tmp_path / "不存在.md"),
         amendment_01=paths.amendment_01,
         amendment_02=paths.amendment_02,
+        amendment_03=paths.amendment_03,
         inputs=paths.inputs,
         rules=paths.rules,
         gold=paths.gold,

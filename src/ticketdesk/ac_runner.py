@@ -110,15 +110,31 @@ def _record_failure(record, exc):
         # 用通用 TIMEOUT + timeout_stage，**不冒充** RUNNER_TIMEOUT
         record.update(failure_contract.timeout_record_fields())
         record["notes"].append(str(exc))
+    elif isinstance(exc, model_client.ModelCallError):
+        _record_model_failure(record, exc)
     else:
         record["failure_code"] = "RUNNER_EXCEPTION"
         record["failure_stage"] = "runner"
-        if isinstance(exc, model_client.ModelCallError):
-            # 冻结契约里没有"模型调用失败"这一类：先按 RUNNER_EXCEPTION 记录，
-            # 但把真实类别留在 notes，避免把 http/空内容/坏 JSON 混成一句 "异常"
-            record["notes"].append("model_call:%s %s" % (exc.kind, exc))
-        else:
-            record["notes"].append(str(exc))
+        record["notes"].append(str(exc))
+
+
+def _record_model_failure(record, exc):
+    """模型阶段的故障分类（协议修订 03）：来源已明确，不再推给运行器。
+
+    - 超时 → `MODEL_TIMEOUT / model`（并填 `timeout_stage`）；
+    - 接口已响应但内容为空 / 不是合法 JSON → `INVALID_SCHEMA / model_output`；
+    - 其余接口或连接失败 → `MODEL_FAILED / model`。
+    """
+    if exc.kind == "timeout":
+        record.update(failure_contract.timeout_record_fields("model"))
+    elif exc.kind in ("empty_content", "bad_json"):
+        record["failure_code"] = "INVALID_SCHEMA"
+        record["failure_stage"] = "model_output"
+    else:
+        record["failure_code"] = "MODEL_FAILED"
+        record["failure_stage"] = "model"
+    # 原始类别留在 notes（不含密钥与完整响应体），便于坏例分析
+    record["notes"].append("model_call:%s %s" % (exc.kind, exc))
 
 
 def run_case(arm, case, route_input, model_factory, executor_factory, budget=4,

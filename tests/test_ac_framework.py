@@ -44,7 +44,7 @@ def test_hash_mismatch_refuses_to_run():
     manifest = evidence_manifest.Manifest(
         protocol_commit="8484f5fb", runner_commit=None, worktree_dirty=True,
         protocol_hash="p0", protocol_amendment_01_hash="p1",
-        protocol_amendment_02_hash="p2",
+        protocol_amendment_02_hash="p2", protocol_amendment_03_hash="p3",
         input_hash="aaaa", rules_hash="bbbb", gold_hash="cccc", gate_hash="dddd",
         agent_needed_labels_hash="l0", label_derivation_script_hash="s0",
     )

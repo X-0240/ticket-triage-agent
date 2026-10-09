@@ -1,7 +1,7 @@
 """失败分类契约（唯一事实来源）：错误码 ↔ 阶段的允许映射与必填约束。
 
-冻结依据：A/C 协议修订 01（`a59f4a76`）第 1、2 节。这是**实现已冻结口径**，
-不新增协议修订。
+冻结依据：A/C 协议修订 01（`a59f4a76`）第 1、2 节 + 修订 03（模型调用失败分类）。
+这是**实现已冻结口径**。
 
 两条必须守住的区别：
 
@@ -30,6 +30,9 @@ FAILURE_MAP = {
     "INVALID_SCHEMA": frozenset({"model_output", "tool_result"}),
     "TOOL_FAILED": frozenset({"tool"}),
     "TOOL_TIMEOUT": frozenset({"tool"}),
+    # 修订 03：接口返回 401/402/429/5xx、连接失败等，来源是模型阶段，
+    # 不能推给运行器（RUNNER_EXCEPTION 只留给运行器自身确实无法归类的异常）
+    "MODEL_FAILED": frozenset({"model"}),
     "MODEL_TIMEOUT": frozenset({"model"}),
     "RUNNER_TIMEOUT": frozenset({"runner"}),
     "TIMEOUT": frozenset({"unknown"}),

@@ -87,7 +87,12 @@ class DeepSeekClient:
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", "replace")[:400]
             raise ModelCallError("http_%d" % exc.code, detail) from exc
-        except (urllib.error.URLError, TimeoutError) as exc:
+        except TimeoutError as exc:
+            # 超时单独一类：运行记录按 MODEL_TIMEOUT / model 记，不混进 MODEL_FAILED
+            raise ModelCallError("timeout", str(exc)) from exc
+        except urllib.error.URLError as exc:
+            if isinstance(exc.reason, TimeoutError):
+                raise ModelCallError("timeout", str(exc.reason)) from exc
             raise ModelCallError("network", str(exc)) from exc
         latency_ms = int((time.perf_counter() - started) * 1000)
         try:
