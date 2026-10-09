@@ -165,6 +165,24 @@ def get_order(order_no, session):
         _fact("created_at", row["created_at"], order_no, None, "orders"),
         _fact("paid_at", row["paid_at"], order_no, None, "orders"),
     ]
+    # 商品行：保修/商品关联类取证需要（W3 冻结范围之一），仍按订单归属客户，
+    # 上面已经校验过 order.customer_id == session.customer_id
+    try:
+        lines = db.query_all(
+            "SELECT sku_code,sku_name,qty,unit_price FROM order_line "
+            "WHERE order_no=%s ORDER BY id LIMIT 20",
+            (order_no,),
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise ToolError("get_order 取商品行失败: " + str(exc)) from exc
+    for line in lines:
+        ref = "%s/%s" % (order_no, line["sku_code"])
+        facts.append(_fact("line_sku", line["sku_code"], ref, None, "order_line"))
+        facts.append(_fact("line_sku_name", line["sku_name"], ref, None,
+                           "order_line"))
+        facts.append(_fact("line_qty", int(line["qty"]), ref, None, "order_line"))
+        facts.append(_fact("line_unit_price", float(line["unit_price"]), ref,
+                           None, "order_line"))
     payload = {
         "tool": "get_order",
         "found": True,
@@ -178,6 +196,126 @@ def get_order(order_no, session):
 
 def now():
     return datetime.now().replace(microsecond=0)
+
+
+def get_refund_records(order_no, session):
+    """按订单号取退款记录（先校验订单归属客户，再返回事实指针）。
+
+    域内缺席（这单确实没有退款记录）→ `NO_REFUND_RECORD`；
+    查询失败 → `ToolError`，不伪装成"没有退款"。
+    """
+    if not order_no:
+        raise ValueError("缺少查询键：order_no")
+    try:
+        order = db.query_one(
+            "SELECT customer_id FROM orders WHERE order_no=%s", (order_no,)
+        )
+        if not order or order["customer_id"] != session.customer_id:
+            return {"tool": "get_refund_records", "found": False, "ref": order_no,
+                    "facts": [], "error": "OUT_OF_SCOPE"}
+        rows = db.query_all(
+            "SELECT refund_no,amount,state,reason,created_at FROM refund "
+            "WHERE order_no=%s ORDER BY id LIMIT 20", (order_no,),
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise ToolError("get_refund_records 取数失败: " + str(exc)) from exc
+    if not rows:
+        return {"tool": "get_refund_records", "found": False, "ref": order_no,
+                "facts": [], "error": "NO_REFUND_RECORD"}
+    facts = []
+    for row in rows:
+        facts.append(_fact("refund_state", row["state"], row["refund_no"],
+                           row["created_at"], "refund"))
+        facts.append(_fact("refund_amount", float(row["amount"]),
+                           row["refund_no"], None, "refund"))
+    payload = {"tool": "get_refund_records", "found": True, "ref": order_no,
+               "facts": facts, "error": None}
+    _assert_no_decision_keys(payload)
+    return payload
+
+
+def search_kb(query, session=None):
+    """按关键词检索知识库：**只返回 PUBLISHED**，并带来源元数据。
+
+    正文片段是唯一允许截断的字段；kb_id / version / status / updated_at 必须回传，
+    否则复核者无法判断政策版本与时效。知识库是全局内容，不按客户隔离。
+    """
+    if not query:
+        raise ValueError("缺少查询键：query")
+    like = "%" + query + "%"
+    try:
+        rows = db.query_all(
+            "SELECT kb_id,title,body,policy_type,version,status,updated_at "
+            "FROM kb_article WHERE status=%s AND (title LIKE %s OR body LIKE %s) "
+            "ORDER BY updated_at DESC LIMIT 5",
+            ("PUBLISHED", like, like),
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise ToolError("search_kb 取数失败: " + str(exc)) from exc
+    if not rows:
+        return {"tool": "search_kb", "found": False, "ref": query, "facts": [],
+                "error": "NO_PUBLISHED_POLICY"}
+    limit = 200
+    facts = []
+    for row in rows:
+        facts.append(_fact("policy_title", row["title"], row["kb_id"],
+                           row["updated_at"], "kb_article"))
+        facts.append(_fact("policy_snippet", row["body"][:limit], row["kb_id"],
+                           row["updated_at"], "kb_article"))
+        facts.append(_fact("policy_version", row["version"], row["kb_id"],
+                           row["updated_at"], "kb_article"))
+        facts.append(_fact("policy_status", row["status"], row["kb_id"],
+                           row["updated_at"], "kb_article"))
+    payload = {"tool": "search_kb", "found": True, "ref": query, "facts": facts,
+               "error": None, "truncate_limit": limit}
+    _assert_no_decision_keys(payload)
+    return payload
+
+
+def get_ticket_history(session, current_ticket_id):
+    """取当前客户**早于当前工单**的历史工单（强制排除当前工单与未来工单）。
+
+    三条硬约束（防标签泄漏与未来信息泄漏）：
+    1. 服务端绑定 `session.customer_id`，模型不能指定客户；
+    2. `created_at < 当前工单的 created_at`——晚于当前工单的不能当历史；
+    3. 只回历史工单的 subject/status/created_at/**resolution**（历史结论），
+       当前工单的 resolution 永不出现。
+    """
+    if not current_ticket_id:
+        raise ValueError("缺少查询键：current_ticket_id")
+    try:
+        current = db.query_one(
+            "SELECT customer_id,created_at FROM ticket WHERE ticket_id=%s",
+            (current_ticket_id,),
+        )
+        if not current or current["customer_id"] != session.customer_id:
+            return {"tool": "get_ticket_history", "found": False,
+                    "ref": current_ticket_id, "facts": [], "error": "OUT_OF_SCOPE"}
+        rows = db.query_all(
+            "SELECT ticket_id,subject,status,resolution,created_at FROM ticket "
+            "WHERE customer_id=%s AND ticket_id<>%s AND created_at<%s "
+            "ORDER BY created_at DESC LIMIT 10",
+            (session.customer_id, current_ticket_id, current["created_at"]),
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise ToolError("get_ticket_history 取数失败: " + str(exc)) from exc
+    if not rows:
+        return {"tool": "get_ticket_history", "found": False,
+                "ref": current_ticket_id, "facts": [],
+                "error": "NO_HISTORY_TICKET"}
+    facts = []
+    for row in rows:
+        ref = row["ticket_id"]
+        facts.append(_fact("history_subject", row["subject"], ref,
+                           row["created_at"], "ticket"))
+        facts.append(_fact("history_status", row["status"], ref,
+                           row["created_at"], "ticket"))
+        facts.append(_fact("history_resolution", row["resolution"], ref,
+                           row["created_at"], "ticket"))
+    payload = {"tool": "get_ticket_history", "found": True,
+               "ref": current_ticket_id, "facts": facts, "error": None}
+    _assert_no_decision_keys(payload)
+    return payload
 
 
 def get_shipment(order_no, session):
