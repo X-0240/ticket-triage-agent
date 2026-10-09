@@ -3,7 +3,7 @@
   "rules_version": "v1",
   "rules_hash": "baea0b7525b20897",
   "input_dataset_sha256": "8310ff04ca10adbbdc2614f528908cd136feade1ffb3f7ef8955e9ef52904c78",
-  "executed_commit": "HEAD",
+  "executed_commit": "a07909d9152571873a7432fc8d3a0480f9c75126",
   "bucketing_result": "benchmark50_repro_20261009T174041.json",
   "packet": "review_packet_v2.md",
   "packet_reads": "inputs_50.json",
