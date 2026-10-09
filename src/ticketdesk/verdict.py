@@ -7,7 +7,14 @@
 2. **服务端拥有最终护栏决定权**：模型可以提出 `needs_human`，但**不能用 false
    覆盖系统强制的转人工**（强制时由服务端置为 True 并记录 override 原因）。
 3. **失败结果必须可拒绝**：枚举错误、证据引用无效、证据为空、出现 `auto_send=true`
-   （本期不做自动发送）都不能作为正常结果放行，且要带上可记录的原因码。
+  （本期不做自动发送）都不能作为正常结果放行，且要带上可记录的原因码。
+
+两类错误必须分开，否则统计会串味：
+
+- **结构错误**（缺字段、类型不对）→ `DecisionSchemaError`，记
+  `failure_code=INVALID_SCHEMA` / `failure_stage=model_output`；
+- **语义错误**（字段在、类型对，但值不合法）→ `DecisionError` 的具体原因码，
+  只写进运行记录的 `validation_code`，**不进失败原因分布**。
 """
 
 from dataclasses import dataclass, field
@@ -23,6 +30,49 @@ class DecisionError(ValueError):
         super().__init__("%s: %s" % (code, reason))
         self.code = code
         self.reason = reason
+
+
+class DecisionSchemaError(ValueError):
+    """模型最终输出**结构**不合法：缺字段 / 类型不对 / 没有最终输出。"""
+
+    code = "INVALID_SCHEMA"
+    stage = "model_output"
+
+    def __init__(self, reason):
+        super().__init__("%s: %s" % (self.code, reason))
+        self.reason = reason
+
+
+# 结构必填字段：缺一个就是结构错误，而不是语义错误
+REQUIRED_FIELDS = ("queue", "priority", "evidence_bundle")
+
+
+def validate_structure(payload):
+    """校验判定结果的**结构**；不合法抛 `DecisionSchemaError`。
+
+    只判断"有没有、类型对不对"，**不判断取值是否合法**——取值合法性留给
+    `validate_decision`，这样 `queue` 缺字段与 `queue="随便一个组"` 不会被混成同一类。
+    """
+    if not isinstance(payload, dict):
+        raise DecisionSchemaError("最终输出不是 dict: " + type(payload).__name__)
+    missing = [name for name in REQUIRED_FIELDS if name not in payload]
+    if missing:
+        raise DecisionSchemaError("最终输出缺字段: " + ",".join(missing))
+    if not isinstance(payload["evidence_bundle"], list):
+        raise DecisionSchemaError("evidence_bundle 不是列表")
+    for name in ("queue", "priority"):
+        value = payload[name]
+        if value is not None and not isinstance(value, str):
+            raise DecisionSchemaError("%s 不是字符串或 null" % name)
+    if not isinstance(payload.get("draft_reply", ""), str):
+        raise DecisionSchemaError("draft_reply 不是字符串")
+    if "confidence" in payload and not isinstance(payload["confidence"], (int, float)):
+        raise DecisionSchemaError("confidence 不是数字")
+    for name in ("needs_human", "auto_send"):
+        # 布尔字段收到字符串（如 "false"）是结构错误，不是"值不合法"
+        if name in payload and not isinstance(payload[name], bool):
+            raise DecisionSchemaError("%s 不是布尔值" % name)
+    return payload
 
 
 @dataclass(frozen=True)
@@ -46,6 +96,7 @@ def validate_decision(payload, allowed_fact_ids, forced_human=False):
         allowed_fact_ids：**本次执行**产生的 fact_id 集合（工具结果的并集）。
         forced_human：服务端是否强制转人工（例如工具失败、证据不足）。
     """
+    validate_structure(payload)
     if payload.get("auto_send"):
         raise DecisionError(
             "AUTO_SEND_FORBIDDEN", "本期不做自动发送，出现 auto_send=true"

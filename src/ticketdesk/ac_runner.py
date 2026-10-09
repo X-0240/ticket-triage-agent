@@ -14,23 +14,50 @@ import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
-from ticketdesk import agent_subgraph, routing
+from ticketdesk import (
+    agent_subgraph,
+    evidence_adapter,
+    failure_contract,
+    routing,
+    verdict,
+)
 
 
 class HashMismatch(ValueError):
     """Manifest 校验不通过：拒绝运行。"""
 
 
+# 安全停止原因：说明"系统为什么停止继续尝试"，**只记 stop_code，不计入失败分布**
+SAFE_STOP_CODES = frozenset({
+    "BUDGET_EXHAUSTED",
+    "NO_NEW_EVIDENCE",
+    "REPEATED_CALL",
+})
+
+
 # 阶段超时由子图定义并透传到这里分类（见 agent_subgraph.StageTimeout）
 StageTimeout = agent_subgraph.StageTimeout
 @dataclass(frozen=True)
 class RunRecord:
-    """一条逐次执行记录（A 或 C 的一案例一次）。"""
+    """一条逐次执行记录（A 或 C 的一案例一次）。
+
+    字段语义（三者不可互相替代）：
+
+    - `stop_code`：系统**为什么停止继续尝试**（安全停止原因），此时 `failure_code` 为空；
+    - `failure_code` + `failure_stage`：**发生了什么故障、发生在哪一侧**；
+    - `validation_code`：模型输出**语义**不合法（队列/优先级取值、证据引用等），
+      它不是执行故障，所以**不写进 `failure_code`**；
+    - `failed`：本次**自动判定未完成**，不代表发生了执行故障；
+    - `timeout_stage`：超时来源（能识别时填写，无法识别时为 `unknown`）。
+
+    `tool_calls` 计的是工具调用**尝试次数**，含失败或被拒绝的那一次。
+    """
 
     case_id: str
     arm: str
     run_id: str
     route: str
+    route_reason: str | None
     action: str
     stop_code: str | None
     tool_calls: int
@@ -39,6 +66,10 @@ class RunRecord:
     tokens: int | None = None
     failed: bool = False
     failure_code: str | None = None
+    failure_stage: str | None = None
+    timeout_stage: str | None = None
+    validation_code: str | None = None
+    raw_output: dict | None = None
     notes: list = field(default_factory=list)
 
 
@@ -47,67 +78,139 @@ def _run_id(arm, case_id):
     return "%s-%s-%s" % (arm, case_id, stamp)
 
 
-def _workflow_decision(case_id, model_factory):
-    """A 臂：基础取数 + 单次判定节点（不进入子图）。"""
-    model = model_factory(case_id, [])
-    action = model(allowed_fact_ids=[], step=0)
+def _workflow_decision(case_id, model_factory, allowed_ids):
+    """固定工作流：基础取数 + 单次判定节点（不进入子图）。
+
+    判定节点必须拿到**本次执行已有的基础证据**：传空列表会让固定工作流"看不到证据"，
+    那样 A 臂就不是被比较的那个固定工作流，对照直接失效。
+    """
+    model = model_factory(case_id, sorted(allowed_ids))
+    action = agent_subgraph.call_model(model, sorted(allowed_ids), 0)
     return action.get("final")
 
 
-def run_case(arm, case, route_input, model_factory, executor_factory, budget=4):
-    """跑一案例的一臂；每次调用都新建模型与执行器（隔离）。"""
+def _record_failure(record, exc):
+    """把异常翻译成记录的故障字段（唯一映射出口）。"""
+    record["failed"] = True
+    if isinstance(exc, evidence_adapter.EvidenceSchemaError):
+        record["failure_code"] = exc.failure_code
+        record["failure_stage"] = exc.failure_stage
+        record["tool_calls"] = getattr(exc, "tool_calls", 0)
+        record["notes"].append(exc.reason)
+    elif isinstance(exc, verdict.DecisionSchemaError):
+        record["failure_code"] = exc.code
+        record["failure_stage"] = exc.stage
+        record["notes"].append(exc.reason)
+    elif isinstance(exc, StageTimeout):
+        record.update(failure_contract.timeout_record_fields(exc.stage))
+        record["notes"].append("stage timeout: " + str(exc.stage))
+    elif isinstance(exc, TimeoutError):
+        # 能识别阶段的超时在模型/工具调用点已经标好阶段；走到这里说明来源无法识别，
+        # 用通用 TIMEOUT + timeout_stage，**不冒充** RUNNER_TIMEOUT
+        record.update(failure_contract.timeout_record_fields())
+        record["notes"].append(str(exc))
+    else:
+        record["failure_code"] = "RUNNER_EXCEPTION"
+        record["failure_stage"] = "runner"
+        record["notes"].append(str(exc))
+
+
+def run_case(arm, case, route_input, model_factory, executor_factory, budget=4,
+             registry_factory=None):
+    """跑一案例的一臂；每次调用都新建模型与执行器（隔离）。
+
+    `registry_factory`：给出证据适配层（`evidence_adapter.EvidenceRegistry`）时，
+    工具返回会先做结构校验与事实登记；不给则直接消费注入执行器给的结构（测试替身）。
+    """
     started = time.perf_counter()
     allowed = set(case.get("base_fact_ids") or [])
-    decision, stop_code, tool_calls, route = None, None, 0, "workflow"
-    failed, failure_code, notes = False, None, []
     tokens = None  # 无法获取用量时必须为 None，不能记成 0
+    registry = registry_factory(case) if registry_factory else None
+    if registry is not None:
+        # 基础取数的证据在子图之前就属于本次执行：登记后新事实不会与它撞 id
+        registry.seed(facts=case.get("base_facts"), fact_ids=sorted(allowed))
+    record = {"failed": False, "notes": [], "payload": None, "stop_code": None,
+              "tool_calls": 0, "route": "workflow", "route_reason": None,
+              "validation_code": None,
+              "failure_code": None, "failure_stage": None, "timeout_stage": None}
     try:
         if arm == "A":
-            decision = _workflow_decision(case["case_id"], model_factory)
+            record["payload"] = _workflow_decision(case["case_id"], model_factory,
+                                                   allowed)
         elif arm == "C":
             route, reason = routing.decide_route(route_input)
+            record["route"] = route
+            # 路由原因码要留痕：协议要求给出"被路由到固定路径的原因码"
+            record["route_reason"] = reason
             if route == routing.ROUTE_AMBIGUOUS:
                 out = agent_subgraph.run(
                     "ambiguous", allowed,
                     model_factory(case["case_id"], sorted(allowed)),
                     executor_factory(case["case_id"]), budget=budget,
+                    registry=registry,
                 )
-                decision = out["payload"]
-                stop_code = out["stop_code"]
-                tool_calls = out["tool_calls"]
+                record["payload"] = out["payload"]
+                record["stop_code"] = out["stop_code"]
+                record["tool_calls"] = out["tool_calls"]
+                allowed = out["allowed_fact_ids"]
                 if out["action"] != "decide":
-                    failed, failure_code = True, out["stop_code"]
-                if stop_code == "BUDGET_EXHAUSTED":
-                    # 预算耗尽只记 stop_code，不重复计入 failure_code
-                    failed, failure_code = True, None
+                    # 没产出自动判定：failed=True，但原因分两类落到 stop_code / failure_code
+                    record["failed"] = True
+                    if out["stop_code"] in SAFE_STOP_CODES:
+                        # 安全停止：原因只落在 stop_code，不进失败分布
+                        record["failure_code"] = None
+                    else:
+                        # 工具失败等：规范化为 failure_code，内部表示不残留
+                        record["failure_code"] = out["stop_code"]
+                        record["failure_stage"] = "tool"
+                        record["stop_code"] = None
             else:
-                decision = _workflow_decision(case["case_id"], model_factory)
-                stop_code = None
+                record["payload"] = _workflow_decision(case["case_id"],
+                                                       model_factory, allowed)
         else:
             raise ValueError("未知的臂: " + str(arm))
-    except StageTimeout as exc:
-        failed = True
-        failure_code = ("MODEL_TIMEOUT" if exc.stage == "model"
-                        else "TOOL_TIMEOUT")
-        notes.append("stage timeout: " + str(exc.stage))
-    except TimeoutError as exc:
-        failed, failure_code = True, "RUNNER_TIMEOUT"
-        notes.append(str(exc))
+
+        decision = None
+        if record["failed"]:
+            pass  # 已经是安全停止或故障：不再校验输出
+        else:
+            try:
+                decision = asdict(verdict.validate_decision(
+                    record["payload"], sorted(allowed),
+                ))
+            except verdict.DecisionError as exc:
+                # 语义错误：只记 validation_code，不进失败原因分布
+                record["failed"] = True
+                record["validation_code"] = exc.code
+                record["notes"].append(exc.reason)
     except Exception as exc:  # noqa: BLE001 - 失败必须留痕，不丢样本
-        failed, failure_code = True, "RUNNER_EXCEPTION"
-        notes.append(str(exc))
+        _record_failure(record, exc)
+        decision = None
     latency = int((time.perf_counter() - started) * 1000)
+    problems = (failure_contract.validate_failure(
+        record["failure_code"], record["failure_stage"],
+    ) if record["failure_code"] else [])
+    for problem in problems:
+        # 契约违规本身就是缺陷：留在记录里，不静默吞掉
+        record["notes"].append("failure_contract: " + problem)
     return RunRecord(
         case_id=case["case_id"], arm=arm, run_id=_run_id(arm, case["case_id"]),
-        route=route, action="decide" if decision else "human_review",
-        stop_code=stop_code, tool_calls=tool_calls, decision=decision,
-        latency_ms=latency, tokens=tokens, failed=failed,
-        failure_code=failure_code, notes=notes,
+        route=record["route"], route_reason=record["route_reason"],
+        action="decide" if decision else "human_review",
+        stop_code=record["stop_code"], tool_calls=record["tool_calls"],
+        decision=decision,
+        latency_ms=latency, tokens=tokens, failed=record["failed"],
+        failure_code=record["failure_code"],
+        failure_stage=record["failure_stage"],
+        timeout_stage=record["timeout_stage"],
+        validation_code=record["validation_code"],
+        raw_output=record["payload"], notes=record["notes"],
     )
 
 
 def run_experiment(cases, route_inputs, model_factory, executor_factory,
-                   manifest_expected, manifest, problem_checker, budget=4):
+                   manifest_expected, manifest, problem_checker, budget=4,
+                   registry_factory=None):
     """跑完整对照。哈希不符直接拒绝，不产生记录。"""
     problems = problem_checker(manifest, manifest_expected)
     if problems:
@@ -117,6 +220,6 @@ def run_experiment(cases, route_inputs, model_factory, executor_factory,
         for arm in ("A", "C"):
             records.append(asdict(run_case(
                 arm, case, route_inputs[case["case_id"]], model_factory,
-                executor_factory, budget=budget,
+                executor_factory, budget=budget, registry_factory=registry_factory,
             )))
     return records
