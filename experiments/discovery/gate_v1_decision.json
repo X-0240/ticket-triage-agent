@@ -1,0 +1,42 @@
+{
+  "kind": "discovery_gate_decision",
+  "decided_at": "2026-10-09",
+  "gate_rule": "Agent-needed >= 10 / 50 且覆盖 >= 3 种动态取数模式",
+  "review": {
+    "packet": "review_packet_v2.md",
+    "packet_sha256_16": "238d011481631c1b",
+    "reviewer": "外部模型（用户转交，独立盲审：新对话，不含本会话上下文）",
+    "independence": "独立：复核者在收到包之前未接触本项目的候选分析",
+    "reviewer_caveat": "provenance 只做包内标识审查，未独立核验外部 issue 原文；required_next_lookup 指业务系统需查的证据，不是重复读取现有字段"
+  },
+  "counts": {
+    "agent_needed_true": 15,
+    "agent_needed_false": 35,
+    "excluded_by_criterion_2": 5,
+    "excluded_by_criterion_3": 5,
+    "criterion_1_true": 20
+  },
+  "agent_needed_cases": [
+    "D-16", "D-17", "D-18", "D-19", "D-20",
+    "D-26", "D-27", "D-28", "D-29", "D-30",
+    "D-36", "D-37", "D-38", "D-39", "D-40"
+  ],
+  "dynamic_patterns": [
+    "履约状态 + 退款资格/取消规则 联合判断（D-16~D-20）",
+    "物流异常详情 + 退款规则 + 历史处理记录（D-26~D-30）",
+    "保修条款核查 + 商品关联（D-36~D-40，唯一候选与正文语义冲突）"
+  ],
+  "gate_result": "PASS",
+  "provenance_flags": {
+    "D-21~D-25": "C2=false：正文没有可识别业务意图，无法据此指定下一项查询",
+    "D-41~D-45": "C3=false：provenance 仅标 benchmark policy，缺少独立真实案例依据"
+  },
+  "notes": [
+    "D-36~D-40 在旧分桶里是 unique（物流组），但复核判定『唯一候选与正文语义冲突』——"
+    "这正是把审查范围从 22 条扩到全 50 条的原因，若只审 multi/zero 会漏掉这 5 条。",
+    "本轮只做第一层 Gate；Agent 子图尚未实现。"
+  ],
+  "rules_hash": "baea0b7525b20897",
+  "input_dataset_sha256": "8310ff04ca10adbbdc2614f528908cd136feade1ffb3f7ef8955e9ef52904c78",
+  "executed_commit": "a07909d9152571873a7432fc8d3a0480f9c75126"
+}
