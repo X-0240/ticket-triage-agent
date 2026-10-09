@@ -1,0 +1,119 @@
+{
+  "kind": "discovery_pilot",
+  "created_at": "2026-10-09T01:35:17",
+  "rules_version": "v1",
+  "rules_hash": "baea0b7525b20897",
+  "cases_version": "pilot",
+  "cases_hash": "dadbdb5b9eb22842",
+  "commit": null,
+  "available_facts": [
+    "amount",
+    "body",
+    "created_at",
+    "current_queue",
+    "paid_at",
+    "shipment",
+    "sla_due_at",
+    "status",
+    "subject"
+  ],
+  "counts": {
+    "unique": 1,
+    "zero_candidate": 2,
+    "multi_candidate": 2,
+    "unexecutable": 0
+  },
+  "rows": [
+    {
+      "case_id": "D-01",
+      "ticket_id": "T-1001",
+      "decision_question": "queue",
+      "bucket": "unique",
+      "candidate_outputs": [
+        "履约组"
+      ],
+      "resolution": "workflow-resolvable",
+      "expected_queue": "履约组",
+      "expected_handoff": "auto",
+      "expected_priority": null,
+      "hit_rules": [
+        "R-01"
+      ],
+      "undecidable_rules": [],
+      "unexecutable_rules": []
+    },
+    {
+      "case_id": "D-02",
+      "ticket_id": "T-1002",
+      "decision_question": "queue",
+      "bucket": "zero_candidate",
+      "candidate_outputs": [],
+      "resolution": "human-review candidate+undecidable",
+      "expected_queue": null,
+      "expected_handoff": "human_review",
+      "expected_priority": null,
+      "hit_rules": [],
+      "undecidable_rules": [
+        "R-05"
+      ],
+      "unexecutable_rules": []
+    },
+    {
+      "case_id": "D-03",
+      "ticket_id": "T-1003",
+      "decision_question": "queue",
+      "bucket": "multi_candidate",
+      "candidate_outputs": [
+        "售后组",
+        "投诉组",
+        "物流组"
+      ],
+      "resolution": "agent-needed candidate",
+      "expected_queue": null,
+      "expected_handoff": "human_review",
+      "expected_priority": null,
+      "hit_rules": [
+        "R-02",
+        "R-03",
+        "R-04"
+      ],
+      "undecidable_rules": [],
+      "unexecutable_rules": []
+    },
+    {
+      "case_id": "D-04",
+      "ticket_id": "T-1003",
+      "decision_question": "priority",
+      "bucket": "multi_candidate",
+      "candidate_outputs": [
+        "P0",
+        "P1"
+      ],
+      "resolution": "agent-needed candidate",
+      "expected_queue": null,
+      "expected_handoff": "human_review",
+      "expected_priority": "P1",
+      "hit_rules": [
+        "P-01",
+        "P-02"
+      ],
+      "undecidable_rules": [],
+      "unexecutable_rules": []
+    },
+    {
+      "case_id": "D-05",
+      "ticket_id": "T-1004",
+      "decision_question": "queue",
+      "bucket": "zero_candidate",
+      "candidate_outputs": [],
+      "resolution": "human-review candidate",
+      "expected_queue": null,
+      "expected_handoff": "human_review",
+      "expected_priority": null,
+      "hit_rules": [],
+      "undecidable_rules": [],
+      "unexecutable_rules": []
+    }
+  ],
+  "note": "pilot 只验分桶机制；v1-draft 结果已作废（见 experiments/discovery/README.md）"
+}

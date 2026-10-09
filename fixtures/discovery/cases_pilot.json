@@ -1,0 +1,53 @@
+{
+  "version": "pilot",
+  "note": "pilot 阶段 5 条。provenance 必填。**队列归属与人工接管是两件事，拆成两个字段**：expected_queue 只表示业务队列，null 表示不适用；expected_handoff ∈ {auto, human_review} 表示是否必须人工接管。分桶由执行器算，case 文件不得指定 bucket。",
+  "cases": [
+    {
+      "case_id": "D-01",
+      "ticket_id": "T-1001",
+      "decision_question": "queue",
+      "expected_queue": "履约组",
+      "expected_handoff": "auto",
+      "provenance": "synthetic_with_basis",
+      "provenance_ref": "frappe/helpdesk#2658（自动分配/SLA 提醒）"
+    },
+    {
+      "case_id": "D-02",
+      "ticket_id": "T-1002",
+      "decision_question": "queue",
+      "expected_queue": null,
+      "expected_handoff": "human_review",
+      "provenance": "synthetic_with_basis",
+      "provenance_ref": "上下文缺失形态（benchmark 构造）"
+    },
+    {
+      "case_id": "D-03",
+      "ticket_id": "T-1003",
+      "decision_question": "queue",
+      "expected_queue": null,
+      "expected_handoff": "human_review",
+      "provenance": "issue_derived",
+      "provenance_ref": "frappe/helpdesk#3465（重开单扭曲指标；诉求与事实冲突）"
+    },
+    {
+      "case_id": "D-04",
+      "ticket_id": "T-1003",
+      "decision_question": "priority",
+      "expected_queue": null,
+      "expected_priority": "P1",
+      "expected_handoff": "human_review",
+      "provenance": "synthetic_with_basis",
+      "provenance_ref": "同一工单的**预登记第二个判定问题**（队列 vs 优先级），非为放大样本",
+      "reuse_reason": "预登记的不同判定问题"
+    },
+    {
+      "case_id": "D-05",
+      "ticket_id": "T-1004",
+      "decision_question": "queue",
+      "expected_queue": null,
+      "expected_handoff": "human_review",
+      "provenance": "synthetic_with_basis",
+      "provenance_ref": "数据不存在形态（订单号查不到）"
+    }
+  ]
+}

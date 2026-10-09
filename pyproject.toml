@@ -1,0 +1,15 @@
+# 代码规范：ruff 检查 + Black 排版，行宽 80（与项目二保持一致）
+[tool.black]
+line-length = 80
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 80
+target-version = "py310"
+src = ["src"]
+exclude = [".git", ".venv", "__pycache__", ".pytest_cache"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "N", "UP", "B", "SIM"]
+# 与项目二同样的豁免：中文注释按两列计宽，硬卡 80 会逼着注释凑字数
+ignore = ["E501", "UP031", "N818", "B008", "B905", "SIM115"]

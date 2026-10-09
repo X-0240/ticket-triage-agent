@@ -1,0 +1,319 @@
+{
+  "kind": "benchmark50_finalize",
+  "rules_version": "v1",
+  "rules_hash": "baea0b7525b20897",
+  "input_dataset_sha256": "8310ff04ca10adbbdc2614f528908cd136feade1ffb3f7ef8955e9ef52904c78",
+  "executed_commit": "HEAD",
+  "bucketing_result": "benchmark50_repro_20261009T174041.json",
+  "packet": "review_packet_v2.md",
+  "packet_reads": "inputs_50.json",
+  "verification": {
+    "cases": 50,
+    "matched": 50
+  },
+  "old_result": "benchmark50_20261009T020906.json",
+  "old_result_note": "缺少历史输入快照，历史输入一致性无法验证，保留但不作可复现记录",
+  "bucket_diff": [
+    {
+      "case_id": "D-01",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-02",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-03",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-04",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-05",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "unique",
+      "changed": true
+    },
+    {
+      "case_id": "D-06",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-07",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-08",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-09",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-10",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "unique",
+      "changed": true
+    },
+    {
+      "case_id": "D-11",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-12",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-13",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-14",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-15",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "unique",
+      "changed": true
+    },
+    {
+      "case_id": "D-16",
+      "old_bucket": "multi_candidate",
+      "new_bucket": "multi_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-17",
+      "old_bucket": "multi_candidate",
+      "new_bucket": "multi_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-18",
+      "old_bucket": "multi_candidate",
+      "new_bucket": "multi_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-19",
+      "old_bucket": "multi_candidate",
+      "new_bucket": "multi_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-20",
+      "old_bucket": "unique",
+      "new_bucket": "multi_candidate",
+      "changed": true
+    },
+    {
+      "case_id": "D-21",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "zero_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-22",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "zero_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-23",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "zero_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-24",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "zero_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-25",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "zero_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-26",
+      "old_bucket": "multi_candidate",
+      "new_bucket": "multi_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-27",
+      "old_bucket": "multi_candidate",
+      "new_bucket": "multi_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-28",
+      "old_bucket": "multi_candidate",
+      "new_bucket": "multi_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-29",
+      "old_bucket": "multi_candidate",
+      "new_bucket": "multi_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-30",
+      "old_bucket": "unique",
+      "new_bucket": "multi_candidate",
+      "changed": true
+    },
+    {
+      "case_id": "D-31",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "zero_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-32",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "zero_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-33",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "zero_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-34",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "zero_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-35",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "zero_candidate",
+      "changed": false
+    },
+    {
+      "case_id": "D-36",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-37",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-38",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-39",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-40",
+      "old_bucket": "zero_candidate",
+      "new_bucket": "unique",
+      "changed": true
+    },
+    {
+      "case_id": "D-41",
+      "old_bucket": "unique",
+      "new_bucket": "zero_candidate",
+      "changed": true
+    },
+    {
+      "case_id": "D-42",
+      "old_bucket": "unique",
+      "new_bucket": "zero_candidate",
+      "changed": true
+    },
+    {
+      "case_id": "D-43",
+      "old_bucket": "unique",
+      "new_bucket": "zero_candidate",
+      "changed": true
+    },
+    {
+      "case_id": "D-44",
+      "old_bucket": "unique",
+      "new_bucket": "zero_candidate",
+      "changed": true
+    },
+    {
+      "case_id": "D-45",
+      "old_bucket": "unique",
+      "new_bucket": "zero_candidate",
+      "changed": true
+    },
+    {
+      "case_id": "D-46",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-47",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-48",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-49",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    },
+    {
+      "case_id": "D-50",
+      "old_bucket": "unique",
+      "new_bucket": "unique",
+      "changed": false
+    }
+  ],
+  "changed_count": 11
+}

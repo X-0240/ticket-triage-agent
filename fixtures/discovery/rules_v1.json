@@ -1,0 +1,87 @@
+{
+  "version": "v1",
+  "frozen_at": "2026-10-09",
+  "note": "pilot 用草稿版；pilot 通过后冻结 v1 并写 frozen_at。source_type 只能是 issue / existing_system_definition / project_synthetic_policy，非外部既有规则一律标 project_synthetic_policy。",
+  "note_required_facts": "required_facts 不可满足 → status=UNEXECUTABLE，不参与分桶；W3 加了工具后自动变成 EXECUTABLE，不重写判定器。effect 分 CANDIDATE（候选队列）与 UNDECIDABLE（无法判定），null 不等于『没有候选』。",
+  "rules": [
+    {
+      "rule_id": "R-01",
+      "decision_type": "queue",
+      "condition": "订单状态=PAID 且没有任何发货事实",
+      "output": "履约组",
+      "effect": "CANDIDATE",
+      "required_facts": ["status", "shipment"],
+      "source_type": "project_synthetic_policy",
+      "source_ref": "W1 seed 设计（已支付未发货）",
+      "frozen_version": "v1"
+    },
+    {
+      "rule_id": "R-02",
+      "decision_type": "queue",
+      "condition": "正文出现『退款』",
+      "output": "售后组",
+      "effect": "CANDIDATE",
+      "required_facts": ["body"],
+      "source_type": "project_synthetic_policy",
+      "source_ref": "benchmark 关键词表（非企业生产规则）",
+      "frozen_version": "v1"
+    },
+    {
+      "rule_id": "R-03",
+      "decision_type": "queue",
+      "condition": "正文出现『没人管』或『投诉』",
+      "output": "投诉组",
+      "effect": "CANDIDATE",
+      "required_facts": ["body"],
+      "source_type": "project_synthetic_policy",
+      "source_ref": "benchmark 关键词表（非企业生产规则）",
+      "frozen_version": "v1"
+    },
+    {
+      "rule_id": "R-04",
+      "decision_type": "queue",
+      "condition": "订单状态=SHIPPED",
+      "output": "物流组",
+      "effect": "CANDIDATE",
+      "required_facts": ["status"],
+      "source_type": "project_synthetic_policy",
+      "source_ref": "W1 seed 设计（已发货看物流）",
+      "frozen_version": "v1"
+    },
+    {
+      "rule_id": "R-05",
+      "decision_type": "queue",
+      "condition": "正文里取不到订单号",
+      "output": null,
+      "effect": "UNDECIDABLE",
+      "required_facts": ["body"],
+      "source_type": "issue",
+      "source_ref": "frappe/helpdesk#2658（自动化/分配需求，未提供订单上下文）",
+      "frozen_version": "v1"
+    }
+  ],
+  "priority_rules": [
+    {
+      "rule_id": "P-01",
+      "decision_type": "priority",
+      "condition": "距离 SLA 到期不足 2 小时",
+      "output": "P0",
+      "effect": "CANDIDATE",
+      "required_facts": ["sla_due_at"],
+      "source_type": "project_synthetic_policy",
+      "source_ref": "benchmark 优先级策略（非企业生产规则，待 W2 全量前确认）",
+      "frozen_version": "v1"
+    },
+    {
+      "rule_id": "P-02",
+      "decision_type": "priority",
+      "condition": "涉及退款诉求",
+      "output": "P1",
+      "effect": "CANDIDATE",
+      "required_facts": ["body"],
+      "source_type": "project_synthetic_policy",
+      "source_ref": "benchmark 优先级策略（非企业生产规则）",
+      "frozen_version": "v1"
+    }
+  ]
+}

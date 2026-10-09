@@ -1,0 +1,8 @@
+{
+  "ticket_id": "T-1001",
+  "note": "跑之前就冻结的期望值；repro/vertical_slice 只读它，绝不写入",
+  "gold_queue": "履约组",
+  "gold_priority": "P1",
+  "required_facts": ["status", "sla_due_at", "paid_at"],
+  "frozen_at": "2026-10-09"
+}
