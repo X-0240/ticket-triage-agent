@@ -51,8 +51,9 @@ MIT（见 `LICENSE`）。
 
 ## 怎么跑（W1 已验证）
 
-依赖：Python 3.10；`pyproject.toml` 是依赖声明的唯一来源，`requirements.txt`
-是从当前环境生成的安装快照（可复现安装用，不手写维护）。
+依赖：Python 3.10。运行依赖见 `requirements.txt`（PyMySQL 与 python-dotenv，只列代码
+实际导入的第三方包，其余为标准库）；检查与测试工具见 `requirements-dev.txt`；
+`pyproject.toml` 保留 ruff 配置与可选的 Black 排版配置。
 
 ```bash
 # 1 建库建表（幂等；库名来自 .env 的 DB_NAME，默认 ticketdesk）

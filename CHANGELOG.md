@@ -237,3 +237,28 @@ tokens 约为 A 的 2.8 倍、还多付 12 条不必要的子图调用。按规�
 - 8 条 `NO_NEW_EVIDENCE` 的 gold `expected_handoff` 都是 `human_review`，
   与 A 臂"有判定但 needs_human=True"实际同去人工——覆盖率把 C 这 8 条记成"缺失"，
   是口径差异，不是业务错误。
+
+## v0.3.1（公开发布准备，2026-10-10）
+
+项目进入收尾与求职材料阶段，功能开发停止，只做公开发布所需的整理。
+
+### 依赖声明收敛
+
+`requirements.txt` 原来是本机环境导出的安装快照（75 行，含 LangGraph、FastAPI、pandas
+等本项目**从未导入**的包）。这种快照放进公开仓库会误导读者，也让"技术栈"无法核对。
+现在拆成两份，按代码实际导入核对：
+
+- `requirements.txt`：运行依赖，只有 `PyMySQL` 与 `python-dotenv`，其余全是标准库；
+- `requirements-dev.txt`：`pytest` 与 `ruff`。
+
+旧快照不再保留为文件（需要时可以从 git 历史里取回）。
+
+### 公开发布前的扫描
+
+按"推送公开仓库前先扫描"的规则，对**全部 24 个提交**（不只当前工作树）扫描：
+本机绝对路径、机器名、`sk-`／`ghp_`／`gho_` 形态令牌、私钥块、邮箱串、密钥赋值。
+结果：全部无命中。唯一的 `DB_PASSWORD` 命中是 `src/ticketdesk/config.py` 里读取环境变量
+的源码行，`.env.example` 的值为空，`.env` 从未被跟踪且已被忽略。
+
+已知事项：提交作者为 `X-0240 <1601317784@qq.com>`（GitHub 关联邮箱）与
+`codex <codex@local>`，公开后这些元数据可见；不改写历史。
