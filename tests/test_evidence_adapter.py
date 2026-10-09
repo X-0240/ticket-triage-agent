@@ -119,3 +119,15 @@ def test_registries_are_isolated_between_executions():
     assert out_a["fact_ids"] == ["fact_02"]
     assert out_c["fact_ids"] == ["fact_01"]      # 不受 A 臂影响
     assert arm_c.known_ids() == {"fact_01"}
+
+
+def test_registry_exposes_fact_bodies_for_prompts():
+    """注册表要能吐出事实正文：模型必须看得到刚取回的证据内容。"""
+    registry = ea.EvidenceRegistry()
+    registry.seed(facts=base_facts(("body", "查退款", "T-2001", "ticket")))
+    registry.adapt(raw_result(raw_fact(value="REFUNDING")))
+    facts = registry.facts_by_id()
+    assert facts["fact_01"]["field"] == "body"
+    assert facts["fact_02"]["value"] == "REFUNDING"
+    assert facts["fact_02"]["fact_id"] == "fact_02"
+    assert set(facts) == registry.known_ids()

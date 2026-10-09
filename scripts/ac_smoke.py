@@ -69,8 +69,9 @@ def main():
     except model_client.ModelCallError as exc:
         raise SystemExit("冒烟未开始：%s" % exc) from exc
     recorders = {}
+    registries = {}
     workflow_factory, agent_factory, usage_factory = (
-        ac_harness.make_model_factories(client, prepared, recorders))
+        ac_harness.make_model_factories(client, prepared, recorders, registries))
     checker_factory = ac_harness.make_checker_factory(
         client, prepared, recorders)
     executor_factory = ac_harness.make_executor_factory(prepared, session)
@@ -100,7 +101,7 @@ def main():
             {case["case_id"]: case["route_input"] for case in prepared},
             workflow_factory, executor_factory, {}, manifest,
             evidence_manifest.verify_files,
-            registry_factory=lambda case: evidence_adapter.EvidenceRegistry(),
+            registry_factory=ac_harness.make_registry_factory(registries),
             agent_model_factory=agent_factory,
             checker_factory=checker_factory,
             usage_factory=usage_factory,

@@ -7,9 +7,12 @@ import pytest
 from ticketdesk import (
     ac_harness,
     ac_runner,
+    agent_subgraph,
+    evidence_adapter,
     model_client,
     prompts,
     routing,
+    verdict,
 )
 
 
@@ -228,6 +231,13 @@ def soft_inputs(cases):
         candidate_requires_semantics=True) for case in cases}
 
 
+def hard_inputs(cases):
+    """硬事实档：规则映射确定、不需要语义校验（走固定路径，不进子图）。"""
+    return {case["case_id"]: routing.RoutingInput(
+        candidates=["履约组"], required_facts_complete=True,
+        candidate_requires_semantics=False) for case in cases}
+
+
 class FinalModel:
     def __init__(self, case_id, allowed):
         pass
@@ -424,3 +434,167 @@ def test_unknown_runner_exception_still_runner_exception():
     for record in records:
         assert record["failure_code"] == "RUNNER_EXCEPTION"
         assert record["failure_stage"] == "runner"
+
+
+# ---- 子图取回的事实，模型必须看得见（冒烟暴露的真实缺陷） ----
+
+
+# ---- 模型动作归一：不许把"输出结构问题"记成工具失败（冒烟暴露的第二个缺陷） ----
+
+
+def test_normalize_action_accepts_unwrapped_decision():
+    """模型直接给判定（没有 final 外壳）仍然算判定：后面照样过全部校验。"""
+    payload = {"queue": "咨询组", "priority": "P3", "evidence_bundle": ["fact_01"],
+               "needs_human": False}
+    assert agent_subgraph.normalize_action(payload) == ("final", payload, {})
+    assert agent_subgraph.normalize_action({"final": payload}) == (
+        "final", payload, {})
+
+
+def test_normalize_action_returns_tool_call():
+    action = {"tool": "search_kb", "args": {"query": "保修"}}
+    assert agent_subgraph.normalize_action(action) == (
+        "tool", "search_kb", {"query": "保修"})
+
+
+def test_normalize_action_rejects_unrecognizable_output():
+    """既没有工具也没有判定的输出 = 模型输出结构问题，不是工具失败。"""
+    with pytest.raises(verdict.DecisionSchemaError) as exc:
+        agent_subgraph.normalize_action({})
+    assert exc.value.code == "INVALID_SCHEMA"
+    assert exc.value.stage == "model_output"
+    with pytest.raises(verdict.DecisionSchemaError):
+        agent_subgraph.normalize_action({"tool": "  "})
+
+
+def test_unwrapped_decision_inside_subgraph_is_accepted():
+    cases = make_cases(["D-01"])
+    payload = {"queue": "物流组", "priority": "P1", "evidence_bundle": ["fact_01"],
+               "needs_human": True}
+
+    class DirectModel:
+        def __init__(self, case_id, allowed):
+            pass
+
+        def __call__(self, allowed_fact_ids, step):
+            return payload          # 没有 final 外壳
+
+    records = ac_runner.run_experiment(
+        cases, ambiguous_inputs(cases), DirectModel, ok_executor, {}, None,
+        lambda m, e: [],
+    )
+    c = [record for record in records if record["arm"] == "C"][0]
+    assert c["decision"]["queue"] == "物流组"
+    assert c["failure_code"] is None
+
+
+def test_unrecognizable_output_is_schema_error_not_tool_failed():
+    cases = make_cases(["D-01"])
+
+    class JunkModel:
+        def __init__(self, case_id, allowed):
+            pass
+
+        def __call__(self, allowed_fact_ids, step):
+            return {"想法": "我先看看"}
+
+    records = ac_runner.run_experiment(
+        cases, ambiguous_inputs(cases), JunkModel, ok_executor, {}, None,
+        lambda m, e: [],
+    )
+    for record in records:
+        assert record["failure_code"] == "INVALID_SCHEMA"
+        assert record["failure_stage"] == "model_output"
+        assert record["failure_code"] != "TOOL_FAILED"
+
+
+def test_tool_request_on_fixed_workflow_is_schema_error():
+    """固定工作流没有工具：模型请求取数记输出结构问题，而不是工具失败。"""
+    cases = make_cases(["D-01"])
+
+    class WantsToolModel:
+        def __init__(self, case_id, allowed):
+            pass
+
+        def __call__(self, allowed_fact_ids, step):
+            return {"tool": "search_kb", "args": {"query": "退款"}}
+
+    records = ac_runner.run_experiment(
+        cases, hard_inputs(cases), WantsToolModel, ok_executor, {}, None,
+        lambda m, e: [],
+    )
+    for record in records:
+        assert record["failure_code"] == "INVALID_SCHEMA"
+        assert record["failure_stage"] == "model_output"
+
+
+class CapturingClient:
+    """假客户端：记录发出去的消息，返回固定 json。"""
+
+    def __init__(self, reply):
+        self.reply = reply
+        self.messages = []
+        self.model = "fake-model"
+        self.calls = 0
+
+    def complete(self, messages, max_tokens=1024):
+        self.messages.append(messages)
+        self.calls += 1
+        return {"content": json.dumps(self.reply), "usage": {"total_tokens": 5},
+                "model": "fake", "latency_ms": 1}
+
+
+def prepared_case_with_dynamic_fact():
+    """一条案例：基础事实 1 条，适配层里另有 1 条刚取回的事实。"""
+    registry = evidence_adapter.EvidenceRegistry()
+    registry.seed(facts=[{"fact_id": "fact_01", "field": "body",
+                          "value": "收到货了，想问下保修政策", "source": "ticket",
+                          "ref": "T-9001"}])
+    registry.adapt({"tool": "search_kb", "found": True, "ref": "保修",
+                    "facts": [
+                        {"field": "policy_snippet", "value": "整机保修 12 个月",
+                         "source": "kb_article", "ref": "K-1003"},
+                    ], "error": None})
+    case = {
+        "case_id": "T-1", "ticket_id": "T-9001",
+        "decision_question": "queue", "body": "收到货了，想问下保修政策",
+        "order_no": "O-3001",
+        "base_facts": [{"fact_id": "fact_01", "field": "body",
+                        "value": "收到货了，想问下保修政策", "source": "ticket",
+                        "ref": "T-9001"}],
+        "base_fact_ids": ["fact_01"],
+        "view": {"case_id": "T-1", "ticket_id": "T-9001",
+                 "decision_question": "queue", "body": "收到货了，想问下保修政策",
+                 "business_state": "delivered_policy_question",
+                 "order_no": "O-3001"},
+        "tool_results": [],
+    }
+    return case, registry
+
+
+def test_agent_prompt_shows_facts_fetched_by_the_subgraph():
+    """取回的证据正文必须出现在下一步的提示词里，否则等于"取了但看不见"。"""
+    case, registry = prepared_case_with_dynamic_fact()
+    client = CapturingClient({"final": {"queue": "咨询组", "priority": "P3",
+                                        "evidence_bundle": ["fact_01", "fact_02"],
+                                        "needs_human": False}})
+    recorders, registries = {}, {"T-1": registry}
+    _, agent_factory, _ = ac_harness.make_model_factories(
+        client, [case], recorders, registries)
+    agent_factory("T-1", ["fact_01"])("fact_01", 0)          # 第 0 步：先取数
+    agent_factory("T-1", ["fact_01", "fact_02"])(
+        ["fact_01", "fact_02"], 1)                            # 第 1 步：应看到新事实
+    second_prompt = json.dumps(client.messages[-1], ensure_ascii=False)
+    assert "整机保修 12 个月" in second_prompt       # 新取回的事实内容可见
+    assert "fact_02" in second_prompt
+
+
+def test_base_facts_still_visible_without_any_dynamic_fetch():
+    case, registry = prepared_case_with_dynamic_fact()
+    client = CapturingClient({"final": {}})
+    _, agent_factory, _ = ac_harness.make_model_factories(
+        client, [case], {}, {"T-1": registry})
+    agent_factory("T-1", ["fact_01"])(["fact_01"], 0)
+    prompt = json.dumps(client.messages[-1], ensure_ascii=False)
+    assert "想问下保修政策" in prompt
+    assert "fact_01" in prompt

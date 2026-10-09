@@ -55,6 +55,7 @@ class EvidenceRegistry:
 
     _by_key: dict = field(default_factory=dict)
     _known_ids: set = field(default_factory=set)
+    _facts: dict = field(default_factory=dict)
     _seq: int = 0
 
     def seed(self, facts=None, fact_ids=None):
@@ -70,6 +71,7 @@ class EvidenceRegistry:
                 continue
             self._by_key[self.identity(fact)] = fact_id
             self._note(fact_id)
+            self._facts[fact_id] = dict(fact)
         for fact_id in fact_ids or []:
             self._note(fact_id)
 
@@ -83,6 +85,10 @@ class EvidenceRegistry:
     def known_ids(self):
         """本次执行已知的全部 fact_id（用于 `allowed_fact_ids` 与审计）。"""
         return set(self._known_ids)
+
+    def facts_by_id(self):
+        """已知事实的正文（id → 事实）。模型要**看到**新取回的事实内容才谈得上用它。"""
+        return dict(self._facts)
 
     def identity(self, fact):
         """事实身份键：身份相同即视为同一条事实，复用同一个 fact_id。"""
@@ -124,6 +130,8 @@ class EvidenceRegistry:
                 new_fact_ids.append(fact_id)
             fact_ids.append(fact_id)
         self._known_ids.update(fact_ids)
+        for fact, fact_id in zip(facts, fact_ids):
+            self._facts[fact_id] = dict(fact, fact_id=fact_id)
         return {
             "fact_ids": fact_ids,
             "facts": [

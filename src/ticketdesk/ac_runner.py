@@ -71,6 +71,7 @@ class RunRecord:
     timeout_stage: str | None = None
     validation_code: str | None = None
     raw_output: dict | None = None
+    tool_trace: list = field(default_factory=list)
     notes: list = field(default_factory=list)
 
 
@@ -87,7 +88,13 @@ def _workflow_decision(case_id, model_factory, allowed_ids):
     """
     model = model_factory(case_id, sorted(allowed_ids))
     action = agent_subgraph.call_model(model, sorted(allowed_ids), 0)
-    return action.get("final")
+    kind, value, _args = agent_subgraph.normalize_action(action)
+    if kind == "tool":
+        # 固定工作流没有工具：模型请求取数属于输出结构问题，
+        # 记 INVALID_SCHEMA / model_output，不是工具执行失败
+        raise verdict.DecisionSchemaError(
+            "固定工作流没有可用工具，模型却请求了: " + str(value))
+    return value
 
 
 def _record_failure(record, exc):
@@ -97,6 +104,7 @@ def _record_failure(record, exc):
         record["failure_code"] = exc.failure_code
         record["failure_stage"] = exc.failure_stage
         record["tool_calls"] = getattr(exc, "tool_calls", 0)
+        record["tool_trace"] = getattr(exc, "tool_trace", [])
         record["notes"].append(exc.reason)
     elif isinstance(exc, verdict.DecisionSchemaError):
         record["failure_code"] = exc.code
@@ -104,6 +112,7 @@ def _record_failure(record, exc):
         record["notes"].append(exc.reason)
     elif isinstance(exc, StageTimeout):
         record.update(failure_contract.timeout_record_fields(exc.stage))
+        record["tool_trace"] = getattr(exc, "tool_trace", [])
         record["notes"].append("stage timeout: " + str(exc.stage))
     elif isinstance(exc, TimeoutError):
         # 能识别阶段的超时在模型/工具调用点已经标好阶段；走到这里说明来源无法识别，
@@ -157,6 +166,7 @@ def run_case(arm, case, route_input, model_factory, executor_factory, budget=4,
         registry.seed(facts=case.get("base_facts"), fact_ids=sorted(allowed))
     record = {"failed": False, "notes": [], "payload": None, "stop_code": None,
               "tool_calls": 0, "route": "workflow", "route_reason": None,
+              "tool_trace": [],
               "validation_code": None,
               "failure_code": None, "failure_stage": None, "timeout_stage": None}
     try:
@@ -189,6 +199,7 @@ def run_case(arm, case, route_input, model_factory, executor_factory, budget=4,
                 record["payload"] = out["payload"]
                 record["stop_code"] = out["stop_code"]
                 record["tool_calls"] = out["tool_calls"]
+                record["tool_trace"] = out.get("tool_trace", [])
                 allowed = out["allowed_fact_ids"]
                 if out["action"] != "decide":
                     # 没产出自动判定：failed=True，但原因分两类落到 stop_code / failure_code
@@ -243,7 +254,8 @@ def run_case(arm, case, route_input, model_factory, executor_factory, budget=4,
         failure_stage=record["failure_stage"],
         timeout_stage=record["timeout_stage"],
         validation_code=record["validation_code"],
-        raw_output=record["payload"], notes=record["notes"],
+        raw_output=record["payload"], tool_trace=record["tool_trace"],
+        notes=record["notes"],
     )
 
 

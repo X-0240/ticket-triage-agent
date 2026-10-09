@@ -19,7 +19,7 @@
 
 from dataclasses import dataclass, field
 
-from ticketdesk import evidence_adapter
+from ticketdesk import evidence_adapter, verdict
 
 ROUTE_AMBIGUOUS = "ambiguous"
 
@@ -63,9 +63,37 @@ def enter(route):
         )
 
 
-def _call_key(action):
-    args = action.get("args") or {}
-    return (action.get("tool"), tuple(sorted(args.items())))
+DECISION_KEYS = ("queue", "priority", "evidence_bundle")
+
+
+def normalize_action(action):
+    """把模型一步的输出归一成动作：`("tool", 工具名, 参数)` 或 `("final", 判定)`。
+
+    容忍一种常见写法：模型**直接把判定 json 给出来**（没有 `final` 外壳）。这是宽容解析
+    而不是放水——判定随后仍要过结构、语义与事实引用校验，非法结果照样被拒。
+
+    既不是工具调用也不是判定的输出属于**模型输出结构问题**，按
+    `INVALID_SCHEMA / model_output` 处理，**不能**当成工具执行失败（修订 03）。
+    """
+    if not isinstance(action, dict):
+        raise verdict.DecisionSchemaError("模型输出不是 json 对象")
+    tool = action.get("tool")
+    if isinstance(tool, str) and tool.strip():
+        args = action.get("args") or {}
+        if not isinstance(args, dict):
+            raise verdict.DecisionSchemaError("工具参数不是 json 对象")
+        return "tool", tool, args
+    final = action.get("final")
+    if isinstance(final, dict):
+        return "final", final, {}
+    if any(key in action for key in DECISION_KEYS):
+        return "final", action, {}
+    raise verdict.DecisionSchemaError(
+        "模型输出既不是工具调用也不是判定，字段为 " + str(sorted(action))[:120])
+
+
+def _call_key(tool, args):
+    return (tool, tuple(sorted(args.items())))
 
 
 def call_model(model, allowed_fact_ids, step):
@@ -99,47 +127,64 @@ def run(route, base_fact_ids, model, executor, budget=4, registry=None):
     enter(route)
     allowed = set(base_fact_ids)
     seen = set()
+    trace = []          # 工具调用轨迹：协议要求留痕，也是"C 拿到了什么"的证据
     for step in range(budget):
         action = call_model(model, sorted(allowed), step)
-        if action.get("final") is not None:
-            return {"action": "decide", "payload": action["final"],
+        kind, value, tool_args = normalize_action(action)
+        if kind == "final":
+            return {"action": "decide", "payload": value,
                     "allowed_fact_ids": allowed, "tool_calls": len(seen),
-                    "stop_code": None}
-        key = _call_key(action)
+                    "stop_code": None, "tool_trace": trace}
+        key = _call_key(value, tool_args)
         if key in seen:
             return {"action": "human_review", "payload": None,
                     "allowed_fact_ids": allowed, "tool_calls": len(seen),
-                    "stop_code": "REPEATED_CALL"}
+                    "stop_code": "REPEATED_CALL", "tool_trace": trace}
         seen.add(key)
+        tool_name = value
+        entry = {"step": step, "tool": tool_name, "args": tool_args}
         try:
-            result = executor(tool=action.get("tool"), **(action.get("args") or {}))
+            result = executor(tool=tool_name, **tool_args)
             if registry is not None:
                 result = registry.adapt(result)
-        except StageTimeout:
+        except StageTimeout as exc:
             # 先于通用异常处理：带阶段信息的超时必须透传，不能被降级成 TOOL_FAILED
+            trace.append(dict(entry, outcome="timeout"))
+            exc.tool_trace = trace
             raise
         except evidence_adapter.EvidenceSchemaError as exc:
             # 工具结果结构不合法：原子拒绝（适配层未登记任何事实），
             # 由运行器分类为 INVALID_SCHEMA / tool_result
+            trace.append(dict(entry, outcome="invalid_schema", detail=exc.reason))
+            exc.tool_trace = trace
             exc.tool_calls = len(seen)   # 保留已发生的调用次数，供审计
             raise
         except TimeoutError as exc:
             # 裸超时贴着工具调用点标阶段：不能因为"运行器最终捕获"就记成运行器超时
-            raise StageTimeout("tool") from exc
-        except Exception:
+            trace.append(dict(entry, outcome="timeout", detail=str(exc)))
+            timeout = StageTimeout("tool")
+            timeout.tool_trace = trace
+            raise timeout from exc
+        except Exception as exc:  # noqa: BLE001 - 工具失败要留痕并安全停止
+            # 失败原因必须进轨迹：否则记录里只剩一个 TOOL_FAILED，无法复核
+            trace.append(dict(entry, outcome="error",
+                              detail="%s: %s" % (type(exc).__name__, exc)))
             return {"action": "human_review", "payload": None,
                     "allowed_fact_ids": allowed, "tool_calls": len(seen),
-                    "stop_code": "TOOL_FAILED"}
+                    "stop_code": "TOOL_FAILED", "tool_trace": trace}
         fact_ids = set(result.get("fact_ids") or [])
         if "new_fact_ids" in result:
             # 适配层是"是否取得新证据"的唯一判定者（重复事实复用 id → 不算新证据）
             new_ids = set(result["new_fact_ids"])
         else:
             new_ids = fact_ids - allowed
+        trace.append(dict(entry, outcome="ok" if new_ids else "no_new_evidence",
+                          fact_ids=sorted(fact_ids)))
         if not new_ids:
             return {"action": "human_review", "payload": None,
                     "allowed_fact_ids": allowed, "tool_calls": len(seen),
-                    "stop_code": "NO_NEW_EVIDENCE"}
+                    "stop_code": "NO_NEW_EVIDENCE", "tool_trace": trace}
         allowed |= fact_ids
     return {"action": "human_review", "payload": None, "allowed_fact_ids": allowed,
-            "tool_calls": len(seen), "stop_code": "BUDGET_EXHAUSTED"}
+            "tool_calls": len(seen), "stop_code": "BUDGET_EXHAUSTED",
+            "tool_trace": trace}

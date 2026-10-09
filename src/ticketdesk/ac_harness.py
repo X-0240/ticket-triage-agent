@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 
 from ticketdesk import (
+    evidence_adapter,
     model_client,
     prompts,
     routing,
@@ -165,6 +166,14 @@ def make_executor_factory(prepared, session):
     """工具执行器：只暴露三组只读补充工具，按案例绑定业务键。"""
     view = {case["case_id"]: case for case in prepared}
 
+    def first(args, *names):
+        """模型可能用不同参数名（query / keyword / q）：认下常见写法，缺了就报清楚。"""
+        for name in names:
+            value = args.get(name)
+            if value:
+                return value
+        return None
+
     def factory(case_id):
         case = view[case_id]
 
@@ -172,10 +181,17 @@ def make_executor_factory(prepared, session):
             if tool not in TOOL_NAMES:
                 raise tools.ToolError("未知工具: %s" % tool)
             if tool == "get_refund_records":
-                return tools.get_refund_records(args.get("order_no", case["order_no"]),
-                                                session)
+                order_no = first(args, "order_no", "order", "order_id") \
+                    or case["order_no"]
+                if not order_no:
+                    raise tools.ToolError("get_refund_records 缺少 order_no")
+                return tools.get_refund_records(order_no, session)
             if tool == "search_kb":
-                return tools.search_kb(args.get("query"), session)
+                query = first(args, "query", "keyword", "q", "text", "policy")
+                if not query:
+                    raise tools.ToolError(
+                        "search_kb 缺少 query（收到参数 %s）" % sorted(args))
+                return tools.search_kb(query, session)
             return tools.get_ticket_history(session, case["ticket_id"])
 
         return call
@@ -199,7 +215,22 @@ class UsageRecorder:
         return self.tokens
 
 
-def make_model_factories(client, prepared, recorders, max_tokens=1200):
+def make_registry_factory(registries):
+    """按案例建证据适配层，并把句柄留给模型工厂。
+
+    为什么需要这个句柄：子图取回的新事实只存在于适配层里，模型要**读到它的内容**
+    才谈得上使用它。没有这一步，模型只能看到 id 列表，等于取数取了但看不见。
+    """
+    def factory(case):
+        registry = evidence_adapter.EvidenceRegistry()
+        registries[case["case_id"]] = registry
+        return registry
+
+    return factory
+
+
+def make_model_factories(client, prepared, recorders, registries=None,
+                         max_tokens=1200):
     """返回 (workflow_factory, agent_factory, usage_factory)。
 
     workflow_factory：固定工作流判定节点（没有工具，一次给结论）；
@@ -207,6 +238,16 @@ def make_model_factories(client, prepared, recorders, max_tokens=1200):
     usage_factory：把真实 token 用量交给运行记录。
     """
     view = {case["case_id"]: case for case in prepared}
+    registries = registries if registries is not None else {}
+
+    def visible_facts(case_id, allowed_fact_ids):
+        """本次执行里模型能看到的事实：基础事实 + 已经取回的事实正文。"""
+        known = {fact["fact_id"]: fact for fact in view[case_id]["base_facts"]}
+        registry = registries.get(case_id)
+        if registry is not None:
+            known.update(registry.facts_by_id())
+        return [known[fact_id] for fact_id in allowed_fact_ids
+                if fact_id in known]
 
     def recorder_of(case_id):
         recorder = recorders.setdefault(case_id, UsageRecorder())
@@ -217,8 +258,7 @@ def make_model_factories(client, prepared, recorders, max_tokens=1200):
         recorder = recorder_of(case_id)
 
         def call(allowed_fact_ids, step):
-            facts = [fact for fact in case["base_facts"]
-                     if fact["fact_id"] in set(allowed_fact_ids)]
+            facts = visible_facts(case_id, allowed_fact_ids)
             messages = prompts.workflow_messages(case["view"], facts)
             reply = client.complete(messages, max_tokens=max_tokens)
             recorder.add(reply["usage"])
@@ -232,8 +272,7 @@ def make_model_factories(client, prepared, recorders, max_tokens=1200):
         history = []
 
         def call(allowed_fact_ids, step):
-            facts = [fact for fact in case["base_facts"]
-                     if fact["fact_id"] in set(allowed_fact_ids)]
+            facts = visible_facts(case_id, allowed_fact_ids)
             messages = prompts.agent_messages(case["view"], facts, step, history)
             reply = client.complete(messages, max_tokens=max_tokens)
             recorder.add(reply["usage"])
