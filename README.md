@@ -11,12 +11,13 @@
 
 **功能开发已停止（2026-10-10）**。唯一一轮正式对照已跑完并入库：
 
-- 结果与产物：`experiments/ac_v1/run_20261010T031551/`（`runs.jsonl` / `summary.json` / `report.md` / `manifest.json`）
+- 结果与产物：`experiments/ac_v1/run_20261010T031551/`（`runs.jsonl` / `summary.json` / `report.md` / `manifest.json` / `case_metrics.jsonl`）
 - 实验口径：`experiments/ac_v1/protocol.md` 与三份修订件（失败分类、止损规则、模型失败分类）
 - 完整结论与已知边界：`CHANGELOG.md`
 
 本轮结论：有效判定的队列准确率两臂同为 1.0，级联 Agent 的 token 用量约为固定工作流的 2.8 倍、
-延迟 P95 约为 2 倍，且没有出现跨案例、跨动态取数模式的可追溯增益，因此**不把 Agent 保留为主路径**。
+延迟 P95 约为 2 倍；配对比较的 20 条可评分案例为 **1 例改善（D-02）、0 例退化、19 例相同**，
+且没有出现跨案例、跨动态取数模式的可追溯增益，因此**不把 Agent 保留为主路径**。
 这是一次 50 条构造数据上的探索性实验，不能推广成"Agent 在所有工单系统里都没有价值"。
 
 完整方案见上一仓库：`inventory-diagnostic-agent/docs/方案草案_工单分诊与受控Agent.md`
@@ -126,11 +127,14 @@ python scripts/ac_smoke.py                # 三个模式各 1 条的真实接入
 
 ## 目录
 
+下表是 **W1 骨架版图**；W2 之后的模块、脚本与实验目录（`routing` / `agent_subgraph` /
+`verdict` / `evidence_*` / `ac_*` 等）不在此逐一列举，见 `CHANGELOG.md`。
+
 ```
-migrations/   底座 schema（ticket / orders / pre_triage_view）
-src/ticketdesk/  config（配置）· db（连接）· tools（两个只读工具）· pipeline（纵切）
-scripts/       migrate · seed · repro · vertical_slice · discovery_pilot
-tests/         工具契约测试（8 条，会话级 fixture 自己初始化数据）
+migrations/   底座 schema（ticket / orders / pre_triage_view）+ shipment 与 W3 两批增量
+src/ticketdesk/  W1 四件：config · db · tools · pipeline；其余见 CHANGELOG
+scripts/       W1 五个：migrate · seed · repro · vertical_slice · discovery_pilot；其余见 CHANGELOG
+tests/         工具契约测试（10 条，会话级 fixture 自己初始化数据）
 fixtures/      gold（跑前冻结）· discovery（规则表 + pilot case）
-experiments/   discovery 结果与作废记录
+experiments/   discovery 结果与作废草案、ac_v1 正式对照与派生件
 ```
